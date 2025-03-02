@@ -1,11 +1,9 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <string>
 
 struct Shader 
 {
-	// the program ID
 	uint32_t ID;
 
 	// constructor reads and builds the shader using utility functions
@@ -24,6 +22,5 @@ struct Shader
 	// error checking
 	void checkCompilationErrors(uint32_t shader, const std::string_view type) const;
 
-	// destructor
 	~Shader();
 };
