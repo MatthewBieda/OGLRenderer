@@ -180,8 +180,6 @@ int main() {
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // unbinding VBO
-
 	ourShader.use();
 	glUniform1i(glGetUniformLocation(ourShader.ID, "texture1"), 0);
 	glUniform1i(glGetUniformLocation(ourShader.ID, "texture2"), 1);
@@ -243,3 +241,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
+
+// chat gippity questions
+
+// When we calculate the inverse of the view matrix, are we taking advantage of orthoganality?
+// Difference between const function arguments and a const function itself

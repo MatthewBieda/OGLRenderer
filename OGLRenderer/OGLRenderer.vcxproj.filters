@@ -55,6 +55,7 @@
     <None Include="shaders\shader.frag">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="..\README.md" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\textures\container.jpg">
