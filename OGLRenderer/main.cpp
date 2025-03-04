@@ -136,9 +136,11 @@ int main() {
 	printf("Max supported Vertex Attribs: %d\n", nrAttributes);
 
 	// configure global OpenGL state
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glFrontFace(GL_CW);
+	glEnable(GL_DEPTH_TEST);
+
+	//glEnable(GL_CULL_FACE);
+	//glCullFace(GL_BACK);
+	//glFrontFace(GL_CW);
 
 	stbi_set_flip_vertically_on_load(true);
 
@@ -147,18 +149,73 @@ int main() {
 
 	Shader ourShader("shaders/shader.vert", "shaders/shader.frag");
 
-	std::array <float, 20> rectangle = 
+	std::array <float, 120> cube =
 	{
-		 // positions         // texture coords
-		 0.5f,  0.5f, 0.0f,   1.0f, 1.0f,   
-		 0.5f, -0.5f, 0.0f,   1.0f, 0.0f,   
-		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f,   
-		-0.5f,  0.5f, 0.0f,   0.0f, 1.0f    
+		// positions         // texture coords
+		// Front face
+		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+
+		// Back face
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+
+		// Left face
+		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+		// Right face
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+		 // Bottom face
+		 -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		  0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+		  0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		 -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+		 // Top face
+		 -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		  0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		  0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 -0.5f,  0.5f,  0.5f,  0.0f, 0.0f
 	};
-	std::array<uint32_t, 6> indices = 
+
+	std::array<uint32_t, 36> indices = {
+		// Front face
+		0, 1, 2,  2, 3, 0,
+		// Back face
+		4, 5, 6,  6, 7, 4,
+		// Left face
+		8, 9, 10,  10, 11, 8,
+		// Right face
+		12, 13, 14,  14, 15, 12,
+		// Bottom face
+		16, 17, 18,  18, 19, 16,
+		// Top face
+		20, 21, 22,  22, 23, 20
+	};
+
+	std::array<glm::vec3, 10> cubePositions = 
 	{
-		0, 1, 3,
-		1, 2, 3  
+		glm::vec3(0.0f,  0.0f,  0.0f),
+		glm::vec3(2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3(2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3(1.3f, -2.0f, -2.5f),
+		glm::vec3(1.5f,  2.0f, -2.5f),
+		glm::vec3(1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
 	unsigned int VBO, VAO, EBO;
@@ -169,7 +226,7 @@ int main() {
 	glBindVertexArray(VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(rectangle), rectangle.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube), cube.data(), GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(), GL_STATIC_DRAW);
@@ -184,26 +241,41 @@ int main() {
 	glUniform1i(glGetUniformLocation(ourShader.ID, "texture1"), 0);
 	glUniform1i(glGetUniformLocation(ourShader.ID, "texture2"), 1);
 
+	// Set projection matrix outside of render loop
+	glm::mat4 projection = glm::mat4(1.0f);
+	projection = glm::perspective(glm::radians(60.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+	glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
 	while (!glfwWindowShouldClose(window)) 
 	{	
 		processInput(window);
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
 		texture1.Bind(); 
 		glActiveTexture(GL_TEXTURE1);
 		texture2.Bind();
 
+		// Update mix value uniform
 		glUniform1f(glGetUniformLocation(ourShader.ID, "mixValue"), mixValue);
 
-		glm::mat4 trans = glm::mat4(1.0f);
-		trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
-		trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
-		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "transform"), 1, GL_FALSE, glm::value_ptr(trans));
+		// Create transformations
+		glm::mat4 view = glm::mat4(1.0f);
+		view = glm::translate(view, glm::vec3(-0.2f, 0.8f, -3.0f));
+		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		for (int i = 0; i < 10; ++i) 
+		{
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, cubePositions[i]);
+			
+			model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(1.0f, 0.3f, 0.5f));
+			glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+		}
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -241,8 +313,3 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
-
-// chat gippity questions
-
-// When we calculate the inverse of the view matrix, are we taking advantage of orthoganality?
-// Difference between const function arguments and a const function itself
