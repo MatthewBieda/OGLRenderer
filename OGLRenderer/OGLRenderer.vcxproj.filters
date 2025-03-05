@@ -36,6 +36,9 @@
     <ClCompile Include="texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\shader.hpp">
@@ -45,6 +48,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="include\texture.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\camera.hpp">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

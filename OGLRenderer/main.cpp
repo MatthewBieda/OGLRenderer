@@ -6,9 +6,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "include/stb_image.h"
-#include "include/shader.hpp"
-#include "include/texture.hpp"
+#include "stb_image.h"
+#include "shader.hpp"
+#include "texture.hpp"
+#include "camera.hpp"
 
 #include <iostream>
 #include <array>
@@ -21,19 +22,14 @@ void processInput(GLFWwindow* window);
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 
-// initial camera state
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 5.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-float mixValue = 0.2f;
+// Camera
+Camera camera;
 
 bool firstMouse = true;
-float yaw = -90.0f;
-float pitch = 0.0f;
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
-float fov = 45.0f;
+
+float mixValue = 0.2f;
 
 // timing
 float deltaTime = 0.0f; // Time between current frame and last frame
@@ -199,17 +195,17 @@ int main() {
 		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
 		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 
-		 // Bottom face
-		 -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		  0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-		  0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		// Bottom face
+		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+		0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 
-		 // Top face
-		 -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		  0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		  0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 -0.5f,  0.5f,  0.5f,  0.0f, 0.0f
+		// Top face
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f
 	};
 
 	std::array<uint32_t, 36> indices = {
@@ -284,12 +280,11 @@ int main() {
 		// Update mix value uniform
 		glUniform1f(glGetUniformLocation(ourShader.ID, "mixValue"), mixValue);
 
-		glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
 		// camera transformation
-		glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-
+		glm::mat4 view = camera.GetViewMatrix();
 		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 		// render boxes
@@ -337,19 +332,19 @@ void processInput(GLFWwindow* window)
 	const float cameraSpeed = 2.5f * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		cameraPos += cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(FORWARD, deltaTime);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		cameraPos -= cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(BACKWARD, deltaTime);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(LEFT, deltaTime);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(RIGHT, deltaTime);
 	}
 }
 
@@ -379,34 +374,10 @@ void mouse_callback(GLFWwindow* window, double xPosIn, double yPosIn)
 	xOffset *= sensitivity;
 	yOffset *= sensitivity;
 
-	yaw += xOffset;
-	pitch += yOffset;
-
-	// make sure that when pitch is out of bounds, screen doesn't get flipped
-	if (pitch > 89.0f) 
-	{
-		pitch = 89.0f;
-	}
-	else if (pitch < -89.0f) 
-	{
-		pitch = -89.0f;
-	}
-
-	glm::vec3 direction;
-	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	direction.y = sin(glm::radians(pitch));
-	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront = glm::normalize(direction);
+	camera.ProcessMouseMovement(xOffset, yOffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)
 {
-	fov -= static_cast<float>(yOffset);
-	if (fov < 1.0) 
-	{
-		fov = 1.0f;
-	} else if (fov > 90.0f) 
-	{
-		fov = 90.0f;
-	}
+	camera.ProcessMouseScroll(static_cast<float>(yOffset));
 }
