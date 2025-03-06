@@ -164,7 +164,9 @@ int main() {
 
 	stbi_set_flip_vertically_on_load(true);
 
-	Shader ourShader("shaders/shader.vert", "shaders/shader.frag");
+	Shader phongShading("shaders/phong.vert", "shaders/phong.frag");
+	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
+	Shader flatShading("shaders/flat.vert", "shaders/flat.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
 	std::array <float, 144> cube =
@@ -276,18 +278,18 @@ int main() {
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		ourShader.use();
+		phongShading.use();
 
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 model = glm::mat4(1.0f);
-		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-		glUniform3f(glGetUniformLocation(ourShader.ID, "objectColor"), 1.0f, 0.5f, 0.31f);
-		glUniform3f(glGetUniformLocation(ourShader.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
-		glUniform3fv(glGetUniformLocation(ourShader.ID, "lightPos"), 1, glm::value_ptr(lightPos));
+		glUniform3f(glGetUniformLocation(phongShading.ID, "objectColor"), 1.0f, 0.5f, 0.31f);
+		glUniform3f(glGetUniformLocation(phongShading.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
+		glUniform3fv(glGetUniformLocation(phongShading.ID, "lightPos"), 1, glm::value_ptr(lightPos));
 
 		glBindVertexArray(VAO);
 
@@ -297,7 +299,7 @@ int main() {
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, cubePositions[i]);
 			model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-			glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+			glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
 		}
 

@@ -55,10 +55,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\shader.vert">
+    <None Include="shaders\phong.vert">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="shaders\shader.frag">
+    <None Include="shaders\phong.frag">
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\README.md" />
@@ -66,6 +66,18 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="shaders\lightSource.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\gouraud.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\gouraud.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\flat.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\flat.frag">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
