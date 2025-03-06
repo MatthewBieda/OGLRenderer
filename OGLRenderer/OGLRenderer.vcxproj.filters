@@ -62,6 +62,12 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\README.md" />
+    <None Include="shaders\lightSource.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\lightSource.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\textures\container.jpg">

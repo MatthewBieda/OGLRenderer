@@ -31,9 +31,12 @@ float lastY = SCR_HEIGHT / 2.0f;
 
 float mixValue = 0.2f;
 
-// timing
+// Timing
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
+
+// Lighting
+glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 GLenum glCheckError_(const char* file, int line)
 {
@@ -157,9 +160,9 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
-	//glFrontFace(GL_CW);
+	// glEnable(GL_CULL_FACE);
+	// glCullFace(GL_BACK);
+	// glFrontFace(GL_CCW);
 
 	stbi_set_flip_vertically_on_load(true);
 
@@ -167,10 +170,12 @@ int main() {
 	Texture texture2("assets/textures/awesomeface.png", true);
 
 	Shader ourShader("shaders/shader.vert", "shaders/shader.frag");
+	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
 	std::array <float, 120> cube =
 	{
 		// positions         // texture coords
+
 		// Front face
 		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
@@ -237,7 +242,7 @@ int main() {
 		glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
-	unsigned int VBO, VAO, EBO;
+	uint32_t VAO, VBO, EBO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 	glGenBuffers(1, &EBO);
@@ -253,8 +258,15 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
+	// Light Source VAO configuration
+	uint32_t lightVAO;
+	glGenVertexArrays(1, &lightVAO);
+	glBindVertexArray(lightVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
 
 	ourShader.use();
 	glUniform1i(glGetUniformLocation(ourShader.ID, "texture1"), 0);
@@ -271,32 +283,45 @@ int main() {
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// bind textures on corresponding texture units
 		glActiveTexture(GL_TEXTURE0);
-		texture1.Bind(); 
+		texture1.Bind();
 		glActiveTexture(GL_TEXTURE1);
 		texture2.Bind();
 
-		// Update mix value uniform
+		// Update mix value uniforms
+		ourShader.use();
 		glUniform1f(glGetUniformLocation(ourShader.ID, "mixValue"), mixValue);
+		glUniform3f(glGetUniformLocation(ourShader.ID, "objectColor"), 1.0f, 0.5f, 0.31f);
+		glUniform3f(glGetUniformLocation(ourShader.ID, "lightColor"), 0.0f, 0.0f, 1.0f);
 
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-
-		// camera transformation
 		glm::mat4 view = camera.GetViewMatrix();
+		glm::mat4 model = glm::mat4(1.0f);
+		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+		glBindVertexArray(VAO);
 
 		// render boxes
-		for (int i = 0; i < 10; ++i) 
+		for (int i = 0; i < 10; ++i)
 		{
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, cubePositions[i]);
-			
+
 			model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(1.0f, 0.3f, 0.5f));
 			glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
 		}
+
+		lightSource.use();
+		model = glm::translate(model, lightPos) * glm::scale(model, glm::vec3(0.2f));
+		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+		glBindVertexArray(lightVAO);
+		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -304,6 +329,7 @@ int main() {
 
 	// De-allocate resources
 	glDeleteVertexArrays(1, &VAO);
+	glDeleteVertexArrays(1, &lightVAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
 
