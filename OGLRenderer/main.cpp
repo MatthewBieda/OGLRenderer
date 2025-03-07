@@ -1,5 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -24,6 +28,7 @@ const unsigned int SCR_HEIGHT = 1080;
 
 // Camera
 Camera camera;
+bool uiActive = false;
 
 bool firstMouse = true;
 float lastX = SCR_WIDTH / 2.0f;
@@ -267,8 +272,20 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	while (!glfwWindowShouldClose(window)) 
-	{	
+	bool drawCubes = true;
+	float cubeSize = 1.0f;
+	glm::vec3 color (1.0f, 0.5f, 0.31f);
+
+	// IMGUI Initialization
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+
+	while (!glfwWindowShouldClose(window))
+	{
 		float currentFrame = static_cast<float>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
@@ -278,8 +295,11 @@ int main() {
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		phongShading.use();
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
+		phongShading.use();
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 model = glm::mat4(1.0f);
@@ -287,20 +307,23 @@ int main() {
 		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-		glUniform3f(glGetUniformLocation(phongShading.ID, "objectColor"), 1.0f, 0.5f, 0.31f);
+		glUniform3fv(glGetUniformLocation(phongShading.ID, "objectColor"), 1, glm::value_ptr(color));
 		glUniform3f(glGetUniformLocation(phongShading.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
 		glUniform3fv(glGetUniformLocation(phongShading.ID, "lightPos"), 1, glm::value_ptr(lightPos));
 
 		glBindVertexArray(VAO);
 
 		// render boxes
-		for (int i = 0; i < 10; ++i)
-		{
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePositions[i]);
-			model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-			glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+		if (drawCubes) {
+			for (int i = 0; i < 10; ++i)
+			{
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, cubePositions[i]);
+				model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(1.0f, 0.3f, 0.5f));
+				model = glm::scale(model, glm::vec3(cubeSize));
+				glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+				glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+			}
 		}
 
 		lightSource.use();
@@ -312,9 +335,23 @@ int main() {
 		glBindVertexArray(lightVAO);
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
 
+		ImGui::Begin("OGLRenderer Interface");
+		ImGui::Text("Change the scene state");
+		ImGui::Checkbox("Draw Cubes", &drawCubes);
+		ImGui::SliderFloat("Size", &cubeSize, 0.5f, 2.0f);
+		ImGui::ColorEdit3("Color", glm::value_ptr(color));
+		ImGui::End();
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	// De-allocate resources
 	glDeleteVertexArrays(1, &VAO);
@@ -328,8 +365,17 @@ int main() {
 
 void processInput(GLFWwindow* window)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) 
+	{
 		glfwSetWindowShouldClose(window, true);
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
+	{
+		{
+			uiActive = !uiActive;
+			glfwSetInputMode(window, GLFW_CURSOR, uiActive ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+		}
 	}
 
 	const float cameraSpeed = 2.5f * deltaTime;
@@ -358,26 +404,30 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_callback(GLFWwindow* window, double xPosIn, double yPosIn) 
 {
-	float xPos = static_cast<float>(xPosIn);
-	float yPos = static_cast<float>(yPosIn);
+	ImGuiIO& io = ImGui::GetIO();
 
-	if (firstMouse)
-	{
+	if (!io.WantCaptureMouse) {
+		float xPos = static_cast<float>(xPosIn);
+		float yPos = static_cast<float>(yPosIn);
+
+		if (firstMouse)
+		{
+			lastX = xPos;
+			lastY = yPos;
+			firstMouse = false;
+		}
+
+		float xOffset = xPos - lastX;
+		float yOffset = lastY - yPos; // reversed since y-coordinates go from bottom to top
 		lastX = xPos;
 		lastY = yPos;
-		firstMouse = false;
+
+		float sensitivity = 0.1f; // change this value to your liking
+		xOffset *= sensitivity;
+		yOffset *= sensitivity;
+
+		camera.ProcessMouseMovement(xOffset, yOffset);
 	}
-
-	float xOffset = xPos - lastX;
-	float yOffset = lastY - yPos; // reversed since y-coordinates go from bottom to top
-	lastX = xPos;
-	lastY = yPos;
-
-	float sensitivity = 0.1f; // change this value to your liking
-	xOffset *= sensitivity;
-	yOffset *= sensitivity;
-
-	camera.ProcessMouseMovement(xOffset, yOffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)
