@@ -161,7 +161,6 @@ int main() {
 
 	// configure global state
 	glEnable(GL_DEPTH_TEST);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	// glEnable(GL_CULL_FACE);
 	// glCullFace(GL_BACK);
@@ -272,10 +271,6 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	bool drawCubes = true;
-	float cubeSize = 1.0f;
-	glm::vec3 color (1.0f, 0.5f, 0.31f);
-
 	// IMGUI Initialization
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -283,6 +278,13 @@ int main() {
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
+
+	enum ShadingMode {PHONG, GOURAUD, FLAT };
+	ShadingMode currentShadingMode = PHONG;
+
+	bool drawCubes = true;
+	float cubeSize = 1.0f;
+	glm::vec3 color (1.0f, 0.5f, 0.31f);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -299,17 +301,34 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		phongShading.use();
+		Shader* activeShader;
+		switch(currentShadingMode) 
+		{
+			case PHONG:
+				activeShader = &phongShading;
+				break;
+			case GOURAUD:
+				activeShader = &gouraudShading;
+				break;
+			case FLAT:
+				activeShader = &flatShading;
+				break;
+			default:
+				activeShader = &phongShading;
+				break;
+		}
+
+		activeShader->use();
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 model = glm::mat4(1.0f);
-		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-		glUniformMatrix4fv(glGetUniformLocation(phongShading.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-		glUniform3fv(glGetUniformLocation(phongShading.ID, "objectColor"), 1, glm::value_ptr(color));
-		glUniform3f(glGetUniformLocation(phongShading.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
-		glUniform3fv(glGetUniformLocation(phongShading.ID, "lightPos"), 1, glm::value_ptr(lightPos));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "objectColor"), 1, glm::value_ptr(color));
+		glUniform3f(glGetUniformLocation(activeShader->ID, "lightColor"), 1.0f, 1.0f, 1.0f);
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "lightPos"), 1, glm::value_ptr(lightPos));
 
 		glBindVertexArray(VAO);
 
@@ -340,6 +359,17 @@ int main() {
 		ImGui::Checkbox("Draw Cubes", &drawCubes);
 		ImGui::SliderFloat("Size", &cubeSize, 0.5f, 2.0f);
 		ImGui::ColorEdit3("Color", glm::value_ptr(color));
+
+		ImGui::Separator();
+		ImGui::Text("Shading Model");
+		bool isPhong = (currentShadingMode == PHONG);
+		bool isGouraud = (currentShadingMode == GOURAUD);
+		bool isFlat = (currentShadingMode == FLAT);
+
+		if (ImGui::RadioButton("Phong", isPhong)) currentShadingMode = PHONG;
+		if (ImGui::RadioButton("Gouraud", isGouraud)) currentShadingMode = GOURAUD;
+		if (ImGui::RadioButton("Flat", isFlat)) currentShadingMode = FLAT;
+
 		ImGui::End();
 
 		ImGui::Render();
@@ -372,10 +402,10 @@ void processInput(GLFWwindow* window)
 
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
 	{
-		{
-			uiActive = !uiActive;
-			glfwSetInputMode(window, GLFW_CURSOR, uiActive ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
-		}
+		uiActive = !uiActive;
+		glfwSetInputMode(window, GLFW_CURSOR, uiActive ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+
+		firstMouse = true;
 	}
 
 	const float cameraSpeed = 2.5f * deltaTime;
