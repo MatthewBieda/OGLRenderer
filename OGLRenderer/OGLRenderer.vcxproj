@@ -171,6 +171,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
+    <None Include="shaders\blinnPhong.frag" />
+    <None Include="shaders\blinnPhong.vert" />
     <None Include="shaders\flat.frag" />
     <None Include="shaders\flat.vert" />
     <None Include="shaders\gouraud.frag" />

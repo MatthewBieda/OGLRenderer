@@ -169,6 +169,7 @@ int main() {
 	stbi_set_flip_vertically_on_load(true);
 
 	Shader phongShading("shaders/phong.vert", "shaders/phong.frag");
+	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
 	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
 	Shader flatShading("shaders/flat.vert", "shaders/flat.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
@@ -279,7 +280,7 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 
-	enum ShadingMode {PHONG, GOURAUD, FLAT };
+	enum ShadingMode {PHONG, BLINNPHONG, GOURAUD, FLAT};
 	ShadingMode currentShadingMode = PHONG;
 
 	bool drawCubes = true;
@@ -306,6 +307,9 @@ int main() {
 		{
 			case PHONG:
 				activeShader = &phongShading;
+				break;
+			case BLINNPHONG:
+				activeShader = &blinnPhongShading;
 				break;
 			case GOURAUD:
 				activeShader = &gouraudShading;
@@ -363,10 +367,12 @@ int main() {
 		ImGui::Separator();
 		ImGui::Text("Shading Model");
 		bool isPhong = (currentShadingMode == PHONG);
+		bool isBlinnPhong = (currentShadingMode == BLINNPHONG);
 		bool isGouraud = (currentShadingMode == GOURAUD);
 		bool isFlat = (currentShadingMode == FLAT);
 
 		if (ImGui::RadioButton("Phong", isPhong)) currentShadingMode = PHONG;
+		if (ImGui::RadioButton("BlinnPhong", isBlinnPhong)) currentShadingMode = BLINNPHONG;
 		if (ImGui::RadioButton("Gouraud", isGouraud)) currentShadingMode = GOURAUD;
 		if (ImGui::RadioButton("Flat", isFlat)) currentShadingMode = FLAT;
 
