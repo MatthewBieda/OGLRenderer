@@ -248,6 +248,14 @@ int main() {
 		glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
+	std::array<glm::vec3, 4> pointLightPositions =
+	{
+		glm::vec3(0.7f, 0.2f, 2.0f),
+		glm::vec3(2.3f, -3.3f, -4.0f),
+		glm::vec3(-4.0f, 2.0f, -12.0f),
+		glm::vec3(0.0f, 0.0f, -3.0f)
+	};
+
 	uint32_t VAO, VBO, EBO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -377,7 +385,7 @@ int main() {
 		// render boxes
 		glBindVertexArray(VAO);
 		if (drawCubes) {
-			for (int i = 0; i < 10; ++i)
+			for (uint32_t i = 0; i < 10; ++i)
 			{
 				glm::mat4 model(1.0f);
 				model = glm::translate(model, cubePositions[i]);
@@ -390,14 +398,19 @@ int main() {
 
 		lightSource.use();
 		glUniform3fv(glGetUniformLocation(lightSource.ID, "lightColor"), 1, glm::value_ptr(lightColor));
-
-		model = glm::translate(model, lightPos) * glm::scale(model, glm::vec3(0.2f));
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 		glBindVertexArray(lightVAO);
-		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+		for (uint32_t i = 0; i < 4; i++)
+		{
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, pointLightPositions[i]);
+			model = glm::scale(model, glm::vec3(0.2f));
+			glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+		}
 
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Change the scene state");
@@ -448,6 +461,7 @@ int main() {
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
 
+	glfwDestroyWindow(window);
 	glfwTerminate();
 	return 0;
 }
