@@ -128,12 +128,6 @@
     <None Include="shaders\gouraud.vert">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="shaders\flat.vert">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\flat.frag">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="shaders\blinnPhong.frag">
       <Filter>Shaders</Filter>
     </None>

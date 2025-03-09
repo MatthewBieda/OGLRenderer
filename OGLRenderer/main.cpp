@@ -178,7 +178,6 @@ int main() {
 	Shader phongShading("shaders/phong.vert", "shaders/phong.frag");
 	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
 	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
-	Shader flatShading("shaders/flat.vert", "shaders/flat.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
 	std::array <float, 144> cube =
@@ -287,7 +286,7 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 
-	enum ShadingMode {PHONG, BLINNPHONG, GOURAUD, FLAT};
+	enum ShadingMode {PHONG, BLINNPHONG, GOURAUD};
 	ShadingMode currentShadingMode = PHONG;
 
 	bool drawCubes = true;
@@ -319,9 +318,6 @@ int main() {
 				break;
 			case GOURAUD:
 				activeShader = &gouraudShading;
-				break;
-			case FLAT:
-				activeShader = &flatShading;
 				break;
 			default:
 				activeShader = &phongShading;
@@ -390,12 +386,10 @@ int main() {
 		bool isPhong = (currentShadingMode == PHONG);
 		bool isBlinnPhong = (currentShadingMode == BLINNPHONG);
 		bool isGouraud = (currentShadingMode == GOURAUD);
-		bool isFlat = (currentShadingMode == FLAT);
 
 		if (ImGui::RadioButton("Phong", isPhong)) currentShadingMode = PHONG;
 		if (ImGui::RadioButton("BlinnPhong", isBlinnPhong)) currentShadingMode = BLINNPHONG;
 		if (ImGui::RadioButton("Gouraud", isGouraud)) currentShadingMode = GOURAUD;
-		if (ImGui::RadioButton("Flat", isFlat)) currentShadingMode = FLAT;
 
 		ImGui::Separator();
 		ImGui::Text("Light Properties");
