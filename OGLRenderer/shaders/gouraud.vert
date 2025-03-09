@@ -2,14 +2,14 @@
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
 
 out vec3 FragColor;
 
 struct Material 
 {
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    sampler2D diffuse;
+    sampler2D specular;
     float shininess;
 };
 
@@ -44,19 +44,19 @@ void main()
     vec3 LightPos = vec3(view * vec4(lightPos, 1.0));
     
     // ambient
-    vec3 ambient = light.ambient * material.ambient;
+    vec3 ambient = light.ambient * texture(material.diffuse, aTexCoords).rgb;
     
      // diffuse 
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(LightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * (diff * material.diffuse);
+    vec3 diffuse = light.diffuse * diff * texture(material.diffuse, aTexCoords).rgb;
     
     // specular - Phong
     vec3 viewDir = normalize(-FragPos); // the viewer is always at (0,0,0) in view-space, 
     vec3 reflectDir = reflect(-lightDir, norm);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    vec3 specular = light.specular * (spec * material.specular);
+    vec3 specular = light.specular * spec * texture(material.specular, aTexCoords).rgb;
     
     // Calculate final color at the vertex
     FragColor = ambient + diffuse + specular;
