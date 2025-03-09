@@ -5,9 +5,25 @@ layout (location = 1) in vec3 aNormal;
 
 out vec3 FragColor;
 
+struct Material 
+{
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float shininess;
+};
+
+struct Light 
+{
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+uniform Material material;
+uniform Light light;
+
 uniform vec3 lightPos;
-uniform vec3 lightColor;
-uniform vec3 objectColor;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -28,21 +44,20 @@ void main()
     vec3 LightPos = vec3(view * vec4(lightPos, 1.0));
     
     // ambient
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * lightColor;
+    vec3 ambient = light.ambient * material.ambient;
     
-    // diffuse
+     // diffuse 
+    vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(LightPos - FragPos);
-    float diff = max(dot(Normal, lightDir), 0.0);
-    vec3 diffuse = diff * lightColor;
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = light.diffuse * (diff * material.diffuse);
     
-    // specular
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(-FragPos); 
-    vec3 reflectDir = reflect(-lightDir, Normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * lightColor;
+    // specular - Phong
+    vec3 viewDir = normalize(-FragPos); // the viewer is always at (0,0,0) in view-space, 
+    vec3 reflectDir = reflect(-lightDir, norm);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 specular = light.specular * (spec * material.specular);
     
     // Calculate final color at the vertex
-    FragColor = (ambient + diffuse + specular) * objectColor;
+    FragColor = ambient + diffuse + specular;
 }

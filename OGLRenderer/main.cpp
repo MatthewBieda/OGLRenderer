@@ -40,6 +40,13 @@ float lastFrame = 0.0f; // Time of last frame
 
 // Lighting
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+glm::vec3 materialAmbient(1.0f, 0.5f, 0.31f);
+glm::vec3 materialDiffuse(1.0f, 0.5f, 0.31f);
+glm::vec3 materialSpecular(0.5f, 0.5f, 0.5f);
+float materialShininess = 32.0f;
+float ambientStrength = 0.2f;
+float diffuseStrength = 0.5f;
+float specularStrength = 1.0f;
 
 GLenum glCheckError_(const char* file, int line)
 {
@@ -285,7 +292,6 @@ int main() {
 
 	bool drawCubes = true;
 	float cubeSize = 1.0f;
-	glm::vec3 color (1.0f, 0.5f, 0.31f);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -295,7 +301,7 @@ int main() {
 
 		processInput(window);
 
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClearColor(0.529f, 0.808f, 0.922f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		ImGui_ImplOpenGL3_NewFrame();
@@ -325,14 +331,28 @@ int main() {
 		activeShader->use();
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
-		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 model(1.0f);
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "objectColor"), 1, glm::value_ptr(color));
-		glUniform3f(glGetUniformLocation(activeShader->ID, "lightColor"), 1.0f, 1.0f, 1.0f);
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "lightPos"), 1, glm::value_ptr(lightPos));
+		// Setting Light Properties
+		glm::vec3 lightColor(1.0f);
+		glm::vec3 diffuseColor = lightColor * glm::vec3(diffuseStrength);
+		glm::vec3 ambientColor = diffuseColor * glm::vec3(ambientStrength);
+		glm::vec3 specularColor = glm::vec3(specularStrength);
+
+		// Pass Light Position in World Space to Vertex Shader
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "lightPos"), 1, glm::value_ptr(lightPos)); 
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "light.ambient"), 1, glm::value_ptr(ambientColor)); 
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "light.diffuse"), 1, glm::value_ptr(diffuseColor)); 
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "light.specular"), 1, glm::value_ptr(specularColor));
+
+		// Set Material Properties
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "material.ambient"), 1, glm::value_ptr(materialAmbient));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "material.diffuse"), 1, glm::value_ptr(materialDiffuse));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "material.specular"), 1, glm::value_ptr(materialSpecular));
+		glUniform1f(glGetUniformLocation(activeShader->ID, "material.shininess"), materialShininess);
 
 		glBindVertexArray(VAO);
 
@@ -340,7 +360,7 @@ int main() {
 		if (drawCubes) {
 			for (int i = 0; i < 10; ++i)
 			{
-				glm::mat4 model = glm::mat4(1.0f);
+				glm::mat4 model(1.0f);
 				model = glm::translate(model, cubePositions[i]);
 				model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(1.0f, 0.3f, 0.5f));
 				model = glm::scale(model, glm::vec3(cubeSize));
@@ -350,6 +370,8 @@ int main() {
 		}
 
 		lightSource.use();
+		glUniform3fv(glGetUniformLocation(lightSource.ID, "lightColor"), 1, glm::value_ptr(lightColor));
+
 		model = glm::translate(model, lightPos) * glm::scale(model, glm::vec3(0.2f));
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -362,7 +384,6 @@ int main() {
 		ImGui::Text("Change the scene state");
 		ImGui::Checkbox("Draw Cubes", &drawCubes);
 		ImGui::SliderFloat("Size", &cubeSize, 0.5f, 2.0f);
-		ImGui::ColorEdit3("Color", glm::value_ptr(color));
 
 		ImGui::Separator();
 		ImGui::Text("Shading Model");
@@ -376,8 +397,75 @@ int main() {
 		if (ImGui::RadioButton("Gouraud", isGouraud)) currentShadingMode = GOURAUD;
 		if (ImGui::RadioButton("Flat", isFlat)) currentShadingMode = FLAT;
 
-		ImGui::End();
+		ImGui::Separator();
+		ImGui::Text("Light Properties");
+		ImGui::SliderFloat("Ambient Strength", &ambientStrength, 0.0f, 1.0f);
+		ImGui::SliderFloat("Diffuse Strength", &diffuseStrength, 0.0f, 1.0f);
+		ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 1.0f);
 
+		ImGui::Separator();
+		ImGui::Text("Material Properties");
+		ImGui::ColorEdit3("Ambient Color", glm::value_ptr(materialAmbient));
+		ImGui::ColorEdit3("Diffuse Color", glm::value_ptr(materialDiffuse));
+		ImGui::ColorEdit3("Specular Color", glm::value_ptr(materialSpecular));
+		ImGui::SliderFloat("Shininess", &materialShininess, 1.0f, 256.0f);
+
+		// Enable syncing ambient and diffuse
+		if (ImGui::Button("Sync Ambient/Diffuse colors")) 
+		{
+			materialAmbient = materialDiffuse;
+		}
+
+		ImGui::Separator();
+		ImGui::Text("Material Presets");
+		if (ImGui::Button("Plastic")) {
+			materialAmbient = glm::vec3(0.0f, 0.1f, 0.06f);
+			materialDiffuse = glm::vec3(0.0f, 0.50980392f, 0.50980392f);
+			materialSpecular = glm::vec3(0.50196078f, 0.50196078f, 0.50196078f);
+			materialShininess = 32.0f;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Gold")) {
+			materialAmbient = glm::vec3(0.24725f, 0.1995f, 0.0745f);
+			materialDiffuse = glm::vec3(0.75164f, 0.60648f, 0.22648f);
+			materialSpecular = glm::vec3(0.628281f, 0.555802f, 0.366065f);
+			materialShininess = 51.2f;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Silver")) {
+			materialAmbient = glm::vec3(0.19225f, 0.19225f, 0.19225f);
+			materialDiffuse = glm::vec3(0.50754f, 0.50754f, 0.50754f);
+			materialSpecular = glm::vec3(0.508273f, 0.508273f, 0.508273f);
+			materialShininess = 51.2f;
+		}
+		if (ImGui::Button("Ruby")) {
+			materialAmbient = glm::vec3(0.1745f, 0.01175f, 0.01175f);
+			materialDiffuse = glm::vec3(0.61424f, 0.04136f, 0.04136f);
+			materialSpecular = glm::vec3(0.727811f, 0.626959f, 0.626959f);
+			materialShininess = 76.8f;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Pearl")) {
+			materialAmbient = glm::vec3(0.25f, 0.20725f, 0.20725f);
+			materialDiffuse = glm::vec3(1.0f, 0.829f, 0.829f);
+			materialSpecular = glm::vec3(0.296648f, 0.296648f, 0.296648f);
+			materialShininess = 11.264f;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Bronze")) {
+			materialAmbient = glm::vec3(0.2125f, 0.1275f, 0.054f);
+			materialDiffuse = glm::vec3(0.714f, 0.4284f, 0.18144f);
+			materialSpecular = glm::vec3(0.393548f, 0.271906f, 0.166721f);
+			materialShininess = 25.6f;
+		}
+
+		ImGui::Separator();
+		ImGui::Text("Light Position");
+		ImGui::SliderFloat("Light X", &lightPos.x, -5.0f, 5.0f);
+		ImGui::SliderFloat("Light Y", &lightPos.y, -5.0f, 5.0f);
+		ImGui::SliderFloat("Light Z", &lightPos.z, -5.0f, 5.0f);
+
+		ImGui::End();
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
