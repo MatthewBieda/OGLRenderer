@@ -351,7 +351,7 @@ int main() {
 		// Setting Light Properties
 		glm::vec3 lightColor(1.0f);
 		glm::vec3 diffuseColor = lightColor * glm::vec3(diffuseStrength);
-		glm::vec3 ambientColor = diffuseColor * glm::vec3(ambientStrength);
+		glm::vec3 ambientColor = lightColor * glm::vec3(ambientStrength);
 		glm::vec3 specularColor = glm::vec3(specularStrength);
 
 		// Pass Light Position in World Space to Vertex Shader
@@ -359,6 +359,11 @@ int main() {
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "light.ambient"), 1, glm::value_ptr(ambientColor)); 
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "light.diffuse"), 1, glm::value_ptr(diffuseColor)); 
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "light.specular"), 1, glm::value_ptr(specularColor));
+
+		// Configure Attenuation Values
+		glUniform1f(glGetUniformLocation(activeShader->ID, "light.constant"), 1.0f);
+		glUniform1f(glGetUniformLocation(activeShader->ID, "light.linear"), 0.09f);
+		glUniform1f(glGetUniformLocation(activeShader->ID, "light.quadratic"), 0.032f);
 
 		// Set Material Properties
 		glUniform1f(glGetUniformLocation(activeShader->ID, "material.shininess"), materialShininess);
