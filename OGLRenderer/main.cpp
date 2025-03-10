@@ -298,7 +298,7 @@ int main() {
 	ImGui_ImplOpenGL3_Init("#version 330");
 
 	enum ShadingMode {PHONG, BLINNPHONG, GOURAUD};
-	ShadingMode currentShadingMode = PHONG;
+	ShadingMode currentShadingMode = BLINNPHONG;
 
 	bool drawCubes = true;
 	float cubeSize = 1.0f;
@@ -343,7 +343,7 @@ int main() {
 				activeShader = &gouraudShading;
 				break;
 			default:
-				activeShader = &phongShading;
+				activeShader = &blinnPhongShading;
 				break;
 		}
 
