@@ -1,8 +1,9 @@
-#include "include/texture.hpp"
-#include "include/stb_image.h"
 #include <glad/glad.h>
+#include <stb_image/stb_image.h>
 
 #include <iostream>
+
+#include "include/texture.hpp"
 
 Texture::Texture(const char* path, bool useMipmaps) 
 {
