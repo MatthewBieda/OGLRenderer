@@ -463,6 +463,14 @@ int main() {
 
 		ImGui::Separator();
 		ImGui::Text("Light Position");
+		for (uint32_t i = 0; i < pointLightPositions.size(); i++) {
+			ImGui::PushID(i);
+			std::string label = "Light " + std::to_string(i);
+			if (ImGui::CollapsingHeader(label.c_str())) {
+				ImGui::DragFloat3("Position", glm::value_ptr(pointLightPositions[i]), 0.1f);
+			}
+			ImGui::PopID();
+		}
 
 		ImGui::End();
 		ImGui::Render();
