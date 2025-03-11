@@ -143,6 +143,10 @@
     <None Include="shaders\blinnPhong.vert">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="external\libs\assimp-vc143-mt.dll">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\.gitignore" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\textures\container.jpg">

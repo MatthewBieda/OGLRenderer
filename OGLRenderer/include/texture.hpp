@@ -8,5 +8,5 @@ struct Texture
 
 	Texture(const char* path, bool useMipmaps);
 	void Bind() const;
-	~Texture();
+	//~Texture();
 };

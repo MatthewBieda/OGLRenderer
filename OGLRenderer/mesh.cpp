@@ -25,11 +25,11 @@ void Mesh::Draw(Shader& shader)
 		glActiveTexture(GL_TEXTURE0 + i); // activate correct texture unit
 
 		std::string uniformName;
-		if (textures[i].type == TextureType::Diffuse) 
+		if (textures[i].type == TextureType::DIFFUSE) 
 		{
 			uniformName = "material.texture_diffuse" + std::to_string(diffuseNr++);
 		}
-		else if (textures[i].type == TextureType::Specular) 
+		else if (textures[i].type == TextureType::SPECULAR) 
 		{
 			uniformName = "material.texture_specular" + std::to_string(specularNr++);
 		}

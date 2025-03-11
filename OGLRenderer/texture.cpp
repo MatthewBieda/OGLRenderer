@@ -38,7 +38,7 @@ void Texture::Bind() const
 	glBindTexture(GL_TEXTURE_2D, ID);
 }
 
-Texture::~Texture() 
-{
-	glDeleteTextures(1, &ID);
-}
+//Texture::~Texture() 
+//{
+	//glDeleteTextures(1, &ID);
+//}

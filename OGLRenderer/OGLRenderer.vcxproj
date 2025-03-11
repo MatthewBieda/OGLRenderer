@@ -120,6 +120,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);glfw3.lib;assimp-vc143-mt.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)OGLRenderer\external\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/verbose</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -140,6 +141,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);glfw3.lib;assimp-vc143-mt.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)OGLRenderer\external\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/verbose</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -175,7 +177,9 @@
     <ClInclude Include="include\texture.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.gitignore" />
     <None Include="..\README.md" />
+    <None Include="external\libs\assimp-vc143-mt.dll" />
     <None Include="shaders\blinnPhong.frag" />
     <None Include="shaders\blinnPhong.vert" />
     <None Include="shaders\gouraud.frag" />
