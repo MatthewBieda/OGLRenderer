@@ -179,7 +179,6 @@
   <ItemGroup>
     <None Include="..\.gitignore" />
     <None Include="..\README.md" />
-    <None Include="external\libs\assimp-vc143-mt.dll" />
     <None Include="shaders\blinnPhong.frag" />
     <None Include="shaders\blinnPhong.vert" />
     <None Include="shaders\gouraud.frag" />

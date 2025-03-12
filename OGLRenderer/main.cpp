@@ -34,12 +34,22 @@ bool firstMouse = true;
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 
+// material properties
+float materialShininess = 32.0f;
+
 // Point Light variables
 float ambientStrength = 0.05f;
 float diffuseStrength = 0.8f;
 float specularStrength = 1.0f;
 
-float materialShininess = 32.0f;
+// Directional light variables
+glm::vec3 direction{ -0.2f, -1.0f, -0.3f };
+float dirAmbient = 0.05f;
+float dirDiffuse = 0.4f;
+float dirSpecular = 0.5f;
+
+// Flashlight toggle
+bool useFlashlight = true;
 
 // Timing
 float deltaTime = 0.0f; // Time between current frame and last frame
@@ -364,10 +374,10 @@ int main() {
 		float quadratic = 0.032f;
 
 		// Directional Light
-		glUniform3f(glGetUniformLocation(activeShader->ID, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "dirLight.ambient"), 0.05f, 0.05f, 0.05f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "dirLight.diffuse"), 0.4f, 0.4f, 0.4f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "dirLight.specular"), 0.5f, 0.5f, 0.5f);
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.direction"), 1, glm::value_ptr(direction));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.ambient"), 1, glm::value_ptr(glm::vec3(dirAmbient)));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.diffuse"), 1, glm::value_ptr(glm::vec3(dirDiffuse)));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.specular"), 1, glm::value_ptr(glm::vec3(dirSpecular)));
 
 		// Point Lights
 		for (uint32_t i = 0; i < 4; ++i)
@@ -384,16 +394,18 @@ int main() {
 		}
 
 		// Spotlights
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.position"), 1, glm::value_ptr(camera.Position));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.direction"), 1, glm::value_ptr(camera.Front));
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.constant"), constant);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.linear"), linear);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.quadratic"), quadratic);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
+		if (useFlashlight) {
+			glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.position"), 1, glm::value_ptr(camera.Position));
+			glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.direction"), 1, glm::value_ptr(camera.Front));
+			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
+			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
+			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
+			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.constant"), constant);
+			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.linear"), linear);
+			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.quadratic"), quadratic);
+			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
+			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
+		}
 
 		// View/Projection
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -452,17 +464,17 @@ int main() {
 		if (ImGui::RadioButton("Gouraud", isGouraud)) currentShadingMode = GOURAUD;
 
 		ImGui::Separator();
-		ImGui::Text("Light Properties");
+		ImGui::Text("Material Properties");
+		ImGui::SliderFloat("Shininess", &materialShininess, 1.0f, 256.0f);
+
+		ImGui::Separator();
+		ImGui::Text("Point Light Properties");
 		ImGui::SliderFloat("Ambient Strength", &ambientStrength, 0.0f, 1.0f);
 		ImGui::SliderFloat("Diffuse Strength", &diffuseStrength, 0.0f, 1.0f);
 		ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 1.0f);
 
 		ImGui::Separator();
-		ImGui::Text("Material Properties");
-		ImGui::SliderFloat("Shininess", &materialShininess, 1.0f, 256.0f);
-
-		ImGui::Separator();
-		ImGui::Text("Light Position");
+		ImGui::Text("Point Light Positions");
 		for (uint32_t i = 0; i < pointLightPositions.size(); i++) {
 			ImGui::PushID(i);
 			std::string label = "Light " + std::to_string(i);
@@ -471,6 +483,16 @@ int main() {
 			}
 			ImGui::PopID();
 		}
+
+		ImGui::Separator();
+		ImGui::Text("Directional Light Properties");
+		ImGui::DragFloat3("Direction", glm::value_ptr(direction), 0.1f);
+		ImGui::SliderFloat("Directional Ambient", &dirAmbient, 0.0f, 1.0f);
+		ImGui::SliderFloat("Directional Diffuse", &dirDiffuse, 0.0f, 1.0f);
+		ImGui::SliderFloat("Directional Specular", &dirSpecular, 0.0f, 1.0f);
+
+		ImGui::Separator();
+		ImGui::Checkbox("Flaslight toggle", &useFlashlight);
 
 		ImGui::End();
 		ImGui::Render();
