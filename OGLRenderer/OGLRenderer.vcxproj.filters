@@ -28,6 +28,9 @@
     <Filter Include="Headers\imgui">
       <UniqueIdentifier>{d5cc6c78-caf7-4306-8b51-dadb70b321f2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets\Models\backpack">
+      <UniqueIdentifier>{229617e5-e476-4dbc-80a7-297300af3c1d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -144,6 +147,15 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\.gitignore" />
+    <None Include="shaders\model.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\model.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="assets\models\backpack\backpack.mtl">
+      <Filter>Assets\Models\backpack</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\textures\container.jpg">
@@ -152,8 +164,26 @@
     <Image Include="assets\textures\awesomeface.png">
       <Filter>Assets\Textures</Filter>
     </Image>
+    <Image Include="assets\models\backpack\ao.jpg">
+      <Filter>Assets\Models\backpack</Filter>
+    </Image>
+    <Image Include="assets\models\backpack\diffuse.jpg">
+      <Filter>Assets\Models\backpack</Filter>
+    </Image>
+    <Image Include="assets\models\backpack\normal.png">
+      <Filter>Assets\Models\backpack</Filter>
+    </Image>
+    <Image Include="assets\models\backpack\roughness.jpg">
+      <Filter>Assets\Models\backpack</Filter>
+    </Image>
+    <Image Include="assets\models\backpack\specular.jpg">
+      <Filter>Assets\Models\backpack</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\LICENSE.txt" />
+    <Text Include="assets\models\backpack\source_attribution.txt">
+      <Filter>Assets\Models\backpack</Filter>
+    </Text>
   </ItemGroup>
 </Project>

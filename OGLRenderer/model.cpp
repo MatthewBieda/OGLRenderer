@@ -47,7 +47,7 @@ void Model::processNode(aiNode* node, const aiScene *scene)
 	// Process each mesh located at the current node
 	for (uint32_t i = 0; i < node->mNumMeshes; ++i)
 	{
-		// The node object pnly contains indices to index the actual objects in the scene.
+		// The node object only contains indices to index the actual objects in the scene.
 		// The scene object contains all the data, node is just to keep stuff organized (like relations between nodes)
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 		meshes.push_back(processMesh(mesh, scene));
@@ -84,6 +84,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 			vector.x = mesh->mNormals[i].x;
 			vector.y = mesh->mNormals[i].y;
 			vector.z = mesh->mNormals[i].z;
+			vertex.Normal = vector;
 		}
 
 		// texcoords
@@ -99,21 +100,20 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 
 			// tangent
 			vector.x = mesh->mTangents[i].x;
-			vector.x = mesh->mTangents[i].y;
+			vector.y = mesh->mTangents[i].y;
 			vector.z = mesh->mTangents[i].z;
 			vertex.Tangent = vector;
 
 			// bitangent
 			vector.x = mesh->mBitangents[i].x;
-			vector.y = mesh->mBitangents[i].y;
-			vector.z = mesh->mBitangents[i].z;
+			vector.y = mesh->mBitangents[i].y; 
+			vector.z = mesh->mBitangents[i].z; 
 			vertex.Bitangent = vector;
 		}
 		else
 		{
 			vertex.TexCoords = glm::vec2(0.0f, 0.0f);
 		}
-		
 		vertices.push_back(vertex);
 	}
 
@@ -145,7 +145,15 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 
 	// 2: Specular Maps
 	std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, TextureType::SPECULAR);
-	textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+	textures.insert(textures.end(), diffuseMaps.begin(), specularMaps.end());
+
+	// 3: Normal Maps
+	std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, TextureType::NORMAL);
+	textures.insert(textures.end(), diffuseMaps.begin(), normalMaps.end());
+
+	// 4: Height maps
+	std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::HEIGHT);
+	textures.insert(textures.end(), diffuseMaps.begin(), heightMaps.end());
 
 	return Mesh(vertices, indices, textures);
 }
@@ -189,26 +197,37 @@ uint32_t TextureFromFile(const char* path, const std::string& directory, bool ga
 	uint32_t textureID;
 	glGenTextures(1, &textureID);
 
+	std::string filename = std::string(path);
+	std::string fullPath = directory + '/' + filename;
+
 	int width, height, nrChannels;
-	uint8_t* data = stbi_load(path, &width, &height, &nrChannels, 0);
+	uint8_t* data = stbi_load(fullPath.c_str(), &width, &height, &nrChannels, 0);
 	if (data)
 	{
-		uint32_t format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-
-		glGenerateMipmap(GL_TEXTURE_2D);
-		stbi_image_free(data);
+		uint32_t format{};
+		if (nrChannels == 1)
+			format = GL_RED;
+		else if (nrChannels == 3)
+			format = GL_RGB;
+		else if (nrChannels == 4)
+			format = GL_RGBA;
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
 
+		// Texture wrapping/filtering options
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
 	}
 	else
 	{
 		std::cerr << "Failed to load texture" << std::endl;
+		stbi_image_free(data);
 	}
 
 	return textureID;

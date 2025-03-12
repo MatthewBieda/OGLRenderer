@@ -45,7 +45,6 @@ void Mesh::Draw(Shader& shader)
 
 	glBindVertexArray(0);
 	glActiveTexture(GL_TEXTURE0);
-
 }
 
 void Mesh::setupMesh()

@@ -18,7 +18,9 @@ struct Vertex
 enum struct TextureType
 {
 	DIFFUSE,
-	SPECULAR
+	SPECULAR,
+	NORMAL,
+	HEIGHT
 };
 
 struct Texture
