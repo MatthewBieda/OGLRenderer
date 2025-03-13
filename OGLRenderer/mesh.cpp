@@ -54,19 +54,19 @@ void Mesh::Draw(Shader& shader) const
 		std::string uniformName;
 		if (textures[i].type == TextureType::DIFFUSE) 
 		{
-			uniformName = "texture_diffuse" + std::to_string(diffuseNr++);
+			uniformName = "material.texture_diffuse" + std::to_string(diffuseNr++);
 		}
 		else if (textures[i].type == TextureType::SPECULAR) 
 		{
-			uniformName = "texture_specular" + std::to_string(specularNr++);
+			uniformName = "material.texture_specular" + std::to_string(specularNr++);
 		}
 		else if (textures[i].type == TextureType::NORMAL)
 		{
-			uniformName = "texture_normal" + std::to_string(normalNr++);
+			uniformName = "material.texture_normal" + std::to_string(normalNr++);
 		}
 		else if (textures[i].type == TextureType::HEIGHT)
 		{
-			uniformName = "texture_height" + std::to_string(heightNr++);
+			uniformName = "material.texture_height" + std::to_string(heightNr++);
 		}
 
 		glUniform1i(glGetUniformLocation(shader.ID, uniformName.c_str()), i);

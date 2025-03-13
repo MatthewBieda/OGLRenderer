@@ -180,13 +180,9 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 	std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, TextureType::SPECULAR);
 	textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
-	// 3: Normal Maps
-	std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, TextureType::NORMAL);
+	// 3: Normal/Height Maps
+	std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::NORMAL);
 	textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-
-	// 4: Height maps
-	std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::HEIGHT);
-	textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
 	return Mesh(std::move(vertices), std::move(indices), std::move(textures));
 }
