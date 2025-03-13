@@ -32,16 +32,21 @@ struct Texture
 
 struct Mesh
 {
+	Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, std::vector<Texture> textures);
+	Mesh(Mesh&& other) noexcept;
+	Mesh& operator=(Mesh&& other) noexcept;
+	~Mesh();
+
+	// Delete Copy Constructor and Copy Assignment Operator
+	Mesh(const Mesh&) = delete;
+	Mesh& operator=(const Mesh&) = delete;
+
+	void Draw(Shader &shader) const;
+	void setupMesh();
+	void cleanup();
+
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 	std::vector<Texture> textures;
-
-	Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, std::vector<Texture> textures);
-	~Mesh();
-
-	void Draw(Shader &shader);
-
-	uint32_t VAO, VBO, EBO;
-	
-	void setupMesh();
+	uint32_t VAO{ 0 }, VBO{ 0 }, EBO{0};
 };

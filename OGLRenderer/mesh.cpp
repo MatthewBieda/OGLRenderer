@@ -8,11 +8,39 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, std::vec
 	setupMesh();
 }
 
-Mesh::~Mesh()
+Mesh::Mesh(Mesh&& other) noexcept
+	: vertices(std::move(other.vertices)),
+	  indices(std::move(other.indices)),
+	  textures(std::move(other.textures)),
+	  VAO(other.VAO),
+	  VBO(other.VBO),
+	  EBO(other.EBO)
 {
+	other.VAO = other.VBO = other.EBO = 0;
 }
 
-void Mesh::Draw(Shader& shader)
+Mesh& Mesh::operator=(Mesh&& other) noexcept
+{
+	if (this != &other) 
+	{
+		cleanup();
+		vertices = std::move(other.vertices);
+		indices = std::move(other.indices);
+		textures = std::move(other.textures);
+		VAO = other.VAO;
+		VBO = other.VBO;
+		EBO = other.EBO;
+		other.VAO = other.VBO = other.EBO = 0;
+	}
+	return *this;
+}
+
+Mesh::~Mesh()
+{
+	cleanup();
+}
+
+void Mesh::Draw(Shader& shader) const
 {
 	uint32_t diffuseNr = 1;
 	uint32_t specularNr = 1;
@@ -84,4 +112,13 @@ void Mesh::setupMesh()
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
 
 	glBindVertexArray(0);
+}
+
+void Mesh::cleanup()
+{
+	if (VAO) glDeleteVertexArrays(1, &VAO);
+	if (VBO) glDeleteBuffers(1, &VBO);
+	if (EBO) glDeleteBuffers(1, &EBO);
+
+	VAO = VBO = EBO = 0;
 }
