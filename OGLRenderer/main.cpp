@@ -176,6 +176,8 @@ int main() {
 	// configure global state
 	glEnable(GL_DEPTH_TEST);
 
+	bool wireframe = false;
+
 	// glEnable(GL_CULL_FACE);
 	// glCullFace(GL_BACK);
 	// glFrontFace(GL_CCW);
@@ -186,9 +188,8 @@ int main() {
 	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
 	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
-	
-	Shader modelShader("shaders/model.vert", "shaders/model.frag");
 
+	Shader modelShader("shaders/model.vert", "shaders/model.frag");
 	Model ourModel("assets/models/backpack/backpack.obj");
 
 	std::array <float, 192> cube =
@@ -305,6 +306,15 @@ int main() {
 		float currentFrame = static_cast<float>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+
+		if (wireframe)
+		{
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		}
+		else
+		{
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
 
 		processInput(window);
 
@@ -456,7 +466,8 @@ int main() {
 		ImGui::SliderFloat("Directional Specular", &dirSpecular, 0.0f, 1.0f);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Flaslight toggle", &useFlashlight);
+		ImGui::Checkbox("Flaslight Toggle", &useFlashlight);
+		ImGui::Checkbox("Wireframe Toggle", &wireframe);
 
 		ImGui::End();
 		ImGui::Render();
