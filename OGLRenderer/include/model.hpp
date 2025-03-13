@@ -1,4 +1,5 @@
 #pragma once
+#include <assimp/scene.h>
 
 #include "mesh.hpp"
 #include "shader.hpp"

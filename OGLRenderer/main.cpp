@@ -12,8 +12,8 @@
 #include <stb_image/stb_image.h>
 
 #include "shader.hpp"
-#include "texture.hpp"
 #include "camera.hpp"
+#include "model.hpp"
 
 #include <iostream>
 #include <array>
@@ -186,118 +186,10 @@ int main() {
 	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
 	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
+	
+	Shader modelShader("shaders/model.vert", "shaders/model.frag");
 
-	std::array <float, 192> cube =
-	{
-		// positions          // normals		  // tex coords
-
-		// Front face
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f,
-
-		// Back face
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 
-		 0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f,
-
-		// Left face
-		-0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-
-		// Right face
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-
-		// Bottom face
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, 
- 		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f,
-
-		// Top face
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f
-	};
-
-	std::array<uint32_t, 36> indices = {
-		// Front face
-		0, 1, 2,  2, 3, 0,
-		// Back face
-		4, 5, 6,  6, 7, 4,
-		// Left face
-		8, 9, 10,  10, 11, 8,
-		// Right face
-		12, 13, 14,  14, 15, 12,
-		// Bottom face
-		16, 17, 18,  18, 19, 16,
-		// Top face
-		20, 21, 22,  22, 23, 20
-	};
-
-	std::array<glm::vec3, 10> cubePositions = 
-	{
-		glm::vec3(0.0f,  0.0f,  0.0f),
-		glm::vec3(2.0f,  5.0f, -15.0f),
-		glm::vec3(-1.5f, -2.2f, -2.5f),
-		glm::vec3(-3.8f, -2.0f, -12.3f),
-		glm::vec3(2.4f, -0.4f, -3.5f),
-		glm::vec3(-1.7f,  3.0f, -7.5f),
-		glm::vec3(1.3f, -2.0f, -2.5f),
-		glm::vec3(1.5f,  2.0f, -2.5f),
-		glm::vec3(1.5f,  0.2f, -1.5f),
-		glm::vec3(-1.3f,  1.0f, -1.5f)
-	};
-
-	std::array<glm::vec3, 4> pointLightPositions =
-	{
-		glm::vec3(0.7f, 0.2f, 2.0f),
-		glm::vec3(2.3f, -3.3f, -4.0f),
-		glm::vec3(-4.0f, 2.0f, -12.0f),
-		glm::vec3(0.0f, 0.0f, -3.0f)
-	};
-
-	uint32_t VAO, VBO, EBO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
-
-	glBindVertexArray(VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cube), cube.data(), GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(), GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
-
-	// Light Source VAO configuration
-	uint32_t lightVAO;
-	glGenVertexArrays(1, &lightVAO);
-	glBindVertexArray(lightVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	// Load Textures
-	Texture diffuseMap ("assets/textures/containerDiffuseMap.png", true);
-	Texture specularMap ("assets/textures/containerSpecularMap.png", true);
+	Model ourModel("assets/models/backpack/backpack.obj");
 
 	// IMGUI Initialization
 	IMGUI_CHECKVERSION();
@@ -307,8 +199,8 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 
-	enum ShadingMode {PHONG, BLINNPHONG, GOURAUD};
-	ShadingMode currentShadingMode = BLINNPHONG;
+	enum ShadingMode {PHONG, BLINNPHONG, GOURAUD, MODEL};
+	ShadingMode currentShadingMode = MODEL;
 
 	bool drawCubes = true;
 	float cubeSize = 1.0f;
@@ -352,101 +244,28 @@ int main() {
 			case GOURAUD:
 				activeShader = &gouraudShading;
 				break;
+			case MODEL:
+				activeShader = &modelShader;
+				break;
 			default:
 				activeShader = &blinnPhongShading;
 				break;
 		}
 
 		activeShader->use();
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "viewPos"), 1, glm::value_ptr(camera.Position));
-		// Set Material Properties
-		glUniform1f(glGetUniformLocation(activeShader->ID, "material.shininess"), materialShininess);
 
-		// Setting Point Light Properties
-		glm::vec3 lightColor(1.0f);
-		glm::vec3 diffuseColor = lightColor * glm::vec3(diffuseStrength);
-		glm::vec3 ambientColor = lightColor * glm::vec3(ambientStrength);
-		glm::vec3 specularColor = glm::vec3(specularStrength);
-
-		// Global attenutation settings
-		float constant = 1.0f;
-		float linear = 0.09f;
-		float quadratic = 0.032f;
-
-		// Directional Light
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.direction"), 1, glm::value_ptr(direction));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.ambient"), 1, glm::value_ptr(glm::vec3(dirAmbient)));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.diffuse"), 1, glm::value_ptr(glm::vec3(dirDiffuse)));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.specular"), 1, glm::value_ptr(glm::vec3(dirSpecular)));
-
-		// Point Lights
-		for (uint32_t i = 0; i < 4; ++i)
-		{
-			std::string number = std::to_string(i);
-
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].position").c_str()), 1, glm::value_ptr(pointLightPositions[i]));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].ambient").c_str()), 1, glm::value_ptr(ambientColor));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].diffuse").c_str()), 1, glm::value_ptr(diffuseColor));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].specular").c_str()), 1, glm::value_ptr(specularColor));
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].constant").c_str()), constant);
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].linear").c_str()), linear);
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].quadratic").c_str()), quadratic);
-		}
-
-		// Spotlights
-		if (useFlashlight) {
-			glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.position"), 1, glm::value_ptr(camera.Position));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.direction"), 1, glm::value_ptr(camera.Front));
-			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
-			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
-			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.constant"), constant);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.linear"), linear);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.quadratic"), quadratic);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
-		}
-
-		// View/Projection
+		// View / Projection transformations
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
-		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-		// Bind textures
-		glActiveTexture(GL_TEXTURE0);
-		diffuseMap.Bind();
-		glActiveTexture(GL_TEXTURE1);
-		specularMap.Bind();
-
-		// render boxes
-		glBindVertexArray(VAO);
-		if (drawCubes) {
-			for (uint32_t i = 0; i < 10; ++i)
-			{
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, cubePositions[i]);
-				model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-				model = glm::scale(model, glm::vec3(cubeSize));
-				glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-				glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-			}
-		}
-
-		lightSource.use();
-		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-
-		glBindVertexArray(lightVAO);
-		for (uint32_t i = 0; i < 4; i++)
-		{
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, pointLightPositions[i]);
-			model = glm::scale(model, glm::vec3(0.2f));
-			glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-		}
+		// Render the loaded model
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate to center of scene
+		model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f)); // too large for our scene 
+		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+		ourModel.Draw(modelShader);
 
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Change the scene state");
@@ -474,17 +293,6 @@ int main() {
 		ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 1.0f);
 
 		ImGui::Separator();
-		ImGui::Text("Point Light Positions");
-		for (uint32_t i = 0; i < pointLightPositions.size(); i++) {
-			ImGui::PushID(i);
-			std::string label = "Light " + std::to_string(i);
-			if (ImGui::CollapsingHeader(label.c_str())) {
-				ImGui::DragFloat3("Position", glm::value_ptr(pointLightPositions[i]), 0.1f);
-			}
-			ImGui::PopID();
-		}
-
-		ImGui::Separator();
 		ImGui::Text("Directional Light Properties");
 		ImGui::DragFloat3("Direction", glm::value_ptr(direction), 0.1f);
 		ImGui::SliderFloat("Directional Ambient", &dirAmbient, 0.0f, 1.0f);
@@ -507,10 +315,6 @@ int main() {
 	ImGui::DestroyContext();
 
 	// De-allocate resources
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteVertexArrays(1, &lightVAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
 
 	glfwDestroyWindow(window);
 	glfwTerminate();

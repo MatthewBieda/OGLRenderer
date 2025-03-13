@@ -1,7 +1,6 @@
 #include <glad/glad.h>
 #include <stb_image/stb_image.h>
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <iostream>
 
@@ -145,15 +144,15 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 
 	// 2: Specular Maps
 	std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, TextureType::SPECULAR);
-	textures.insert(textures.end(), diffuseMaps.begin(), specularMaps.end());
+	textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
 	// 3: Normal Maps
 	std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, TextureType::NORMAL);
-	textures.insert(textures.end(), diffuseMaps.begin(), normalMaps.end());
+	textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 
 	// 4: Height maps
 	std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::HEIGHT);
-	textures.insert(textures.end(), diffuseMaps.begin(), heightMaps.end());
+	textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
 	return Mesh(vertices, indices, textures);
 }

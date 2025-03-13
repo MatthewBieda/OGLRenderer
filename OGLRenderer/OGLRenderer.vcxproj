@@ -158,7 +158,6 @@
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="model.cpp" />
     <ClCompile Include="shader.cpp" />
-    <ClCompile Include="texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imconfig.h" />
@@ -174,7 +173,6 @@
     <ClInclude Include="include\mesh.hpp" />
     <ClInclude Include="include\model.hpp" />
     <ClInclude Include="include\shader.hpp" />
-    <ClInclude Include="include\texture.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.gitignore" />
