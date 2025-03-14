@@ -178,9 +178,9 @@ int main() {
 
 	bool wireframe = false;
 
-	// glEnable(GL_CULL_FACE);
-	// glCullFace(GL_BACK);
-	// glFrontFace(GL_CCW);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CCW);
 
 	stbi_set_flip_vertically_on_load(true);
 
@@ -300,6 +300,10 @@ int main() {
 
 	bool drawModel = true;
 	float modelSize = 1.0f;
+	glm::vec3 modelPosition{ 0.0f, 0.0f, 0.0f };
+	float modelRotationX = 0.0f;
+	float modelRotationY = 0.0f;
+	float modelRotationZ = 0.0f;
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -401,8 +405,11 @@ int main() {
 		// Render the loaded model
 		if (drawModel) {
 			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate to center of scene
-			model = glm::scale(model, glm::vec3(modelSize)); // too large for our scene 
+			model = glm::translate(model, modelPosition); 
+			model = glm::rotate(model, glm::radians(modelRotationX),  glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::rotate(model, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
+			model = glm::rotate(model, glm::radians(modelRotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
+			model = glm::scale(model, glm::vec3(modelSize)); 
 			glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 			ourModel.Draw(modelShader);
 		}
@@ -424,8 +431,12 @@ int main() {
 
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Change the scene state");
-		ImGui::Checkbox("Draw Cubes", &drawModel);
-		ImGui::SliderFloat("Size", &modelSize, 0.5f, 2.0f);
+		ImGui::Checkbox("Draw Model", &drawModel);
+		ImGui::SliderFloat("Model Scale", &modelSize, 0.5f, 2.0f);
+		ImGui::DragFloat3("Model Position", glm::value_ptr(modelPosition), 0.1f);
+		ImGui::SliderFloat("Model Rotation X", &modelRotationX, 0.0f, 360.0f);
+		ImGui::SliderFloat("Model Rotation Y", &modelRotationY, 0.0f, 360.0f);
+		ImGui::SliderFloat("Model Rotation Z", &modelRotationZ, 0.0f, 360.0f);
 
 		ImGui::Separator();
 		ImGui::Text("Shading Model");
