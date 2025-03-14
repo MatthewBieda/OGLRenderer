@@ -430,7 +430,7 @@ int main() {
 		}
 
 		ImGui::Begin("OGLRenderer Interface");
-		ImGui::Text("Change the scene state");
+		ImGui::Text("Modify Model Properties");
 		ImGui::Checkbox("Draw Model", &drawModel);
 		ImGui::SliderFloat("Model Scale", &modelSize, 0.5f, 2.0f);
 		ImGui::DragFloat3("Model Position", glm::value_ptr(modelPosition), 0.1f);
