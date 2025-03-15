@@ -23,8 +23,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 void processInput(GLFWwindow* window);
 
-const unsigned int SCR_WIDTH = 1920;
-const unsigned int SCR_HEIGHT = 1080;
+const int SCR_WIDTH = 1920;
+const int SCR_HEIGHT = 1080;
 
 // Camera
 Camera camera;
@@ -287,6 +287,46 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
+	// 2D PLANE
+	std::array <float, 32> Plane = {
+		 // positions      // normals         
+		 10,  0.0f,  10,   0.0f,  1.0f,  0.0f,
+		 10,  0.0f, -10,   0.0f,  1.0f,  0.0f,
+		-10,  0.0f, -10,   0.0f,  1.0f,  0.0f,
+		-10,  0.0f,  10,   0.0f,  1.0f,  0.0f
+	};
+
+	std::array<uint32_t, 6> planeIndices = 
+	{
+		0, 1, 3,
+		1, 2, 3
+	};
+
+	uint32_t planeVAO, planeVBO, planeEBO;
+
+	glGenVertexArrays(1, &planeVAO);
+	glGenBuffers(1, &planeVBO);
+	glGenBuffers(1, &planeEBO);
+
+	glBindVertexArray(planeVAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Plane), Plane.data(), GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planeEBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(planeIndices), planeIndices.data(), GL_STATIC_DRAW);
+
+	// Position attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// Normal attribute
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glBindVertexArray(0);
+
+
 	// IMGUI Initialization
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -414,6 +454,14 @@ int main() {
 			ourModel.Draw(modelShader);
 		}
 
+		// Draw 2D plane
+		glBindVertexArray(planeVAO);
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
+		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
 		lightSource.use();
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -428,7 +476,6 @@ int main() {
 
 			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
 		}
-
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Modify Model Properties");
 		ImGui::Checkbox("Draw Model", &drawModel);
