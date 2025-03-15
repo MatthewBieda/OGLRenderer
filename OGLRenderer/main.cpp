@@ -13,6 +13,7 @@
 
 #include "shader.hpp"
 #include "camera.hpp"
+#include "modelManager.hpp"
 #include "model.hpp"
 
 #include <iostream>
@@ -190,7 +191,7 @@ int main() {
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
 	Shader modelShader("shaders/model.vert", "shaders/model.frag");
-	Model ourModel("assets/models/backpack/backpack.obj");
+	Model ourModel("assets/models/human/human.obj");
 
 	std::array <float, 192> cube =
 	{
@@ -442,16 +443,18 @@ int main() {
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
+		glm::vec3 defaultColor{ 0.8f,0.8f,0.8f };
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "defaultColor"), 1, glm::value_ptr(defaultColor));
 		// Render the loaded model
 		if (drawModel) {
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, modelPosition); 
-			model = glm::rotate(model, glm::radians(modelRotationX),  glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::rotate(model, glm::radians(modelRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
 			model = glm::rotate(model, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
 			model = glm::rotate(model, glm::radians(modelRotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
 			model = glm::scale(model, glm::vec3(modelSize)); 
 			glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-			ourModel.Draw(modelShader);
+			ourModel.Draw(*activeShader);
 		}
 
 		// Draw 2D plane
@@ -479,7 +482,7 @@ int main() {
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Modify Model Properties");
 		ImGui::Checkbox("Draw Model", &drawModel);
-		ImGui::SliderFloat("Model Scale", &modelSize, 0.5f, 2.0f);
+		ImGui::SliderFloat("Model Scale", &modelSize, 0.1f, 2.0f);
 		ImGui::DragFloat3("Model Position", glm::value_ptr(modelPosition), 0.1f);
 		ImGui::SliderFloat("Model Rotation X", &modelRotationX, 0.0f, 360.0f);
 		ImGui::SliderFloat("Model Rotation Y", &modelRotationY, 0.0f, 360.0f);

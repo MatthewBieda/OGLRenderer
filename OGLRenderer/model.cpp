@@ -34,6 +34,9 @@ Model& Model::operator=(Model&& other) noexcept
 
 void Model::Draw(Shader& shader) const
 {
+	// Set uniform before drawing meshes
+	glUniform1i(glGetUniformLocation(shader.ID, "hasTextures"), hasTextures);
+
 	for (const auto& mesh : meshes)
 	{
 		mesh.Draw(shader);
@@ -183,6 +186,11 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 	// 3: Normal/Height Maps
 	std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::NORMAL);
 	textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+
+	if (!diffuseMaps.empty())
+	{
+		hasTextures = true;
+	}
 
 	return Mesh(std::move(vertices), std::move(indices), std::move(textures));
 }

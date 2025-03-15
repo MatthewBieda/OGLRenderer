@@ -72,6 +72,9 @@
     <ClCompile Include="model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="modelManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\shader.hpp">
@@ -111,6 +114,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="include\model.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\modelManager.hpp">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

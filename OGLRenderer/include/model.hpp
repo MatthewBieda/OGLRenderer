@@ -32,5 +32,6 @@ struct Model
 	std::vector<Mesh> meshes;
 	std::string directory;
 	bool gammaCorrection = false;
+	bool hasTextures = false;
 };
 
