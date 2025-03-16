@@ -17,7 +17,8 @@ Model::Model(Model&& other) noexcept
 	: meshes(std::move(other.meshes)),
 	  directory(std::move(other.directory)),
 	  textures_loaded(std::move(other.textures_loaded)),
-	  gammaCorrection(other.gammaCorrection)
+	  gammaCorrection(other.gammaCorrection),
+	  hasTextures(other.hasTextures)
 {
 }
 
@@ -28,6 +29,7 @@ Model& Model::operator=(Model&& other) noexcept
 		directory = std::move(other.directory);
 		textures_loaded = std::move(other.textures_loaded);
 		gammaCorrection = other.gammaCorrection;
+		hasTextures = other.hasTextures;
 	}
 	return *this;
 }

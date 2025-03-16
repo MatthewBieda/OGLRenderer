@@ -56,6 +56,9 @@ bool useFlashlight = true;
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 
+// Model container
+std::vector<Model> allModels;
+
 GLenum glCheckError_(const char* file, int line)
 {
 	GLenum errorCode;
@@ -191,7 +194,9 @@ int main() {
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
 	Shader modelShader("shaders/model.vert", "shaders/model.frag");
-	Model ourModel("assets/models/human/human.obj");
+
+	Model betterCube("assets/models/betterCube/betterCube.obj");
+	allModels.push_back(std::move(betterCube));
 
 	std::array <float, 192> cube =
 	{
@@ -445,16 +450,20 @@ int main() {
 
 		glm::vec3 defaultColor{ 0.8f,0.8f,0.8f };
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "defaultColor"), 1, glm::value_ptr(defaultColor));
-		// Render the loaded model
+
+		// Render all models
 		if (drawModel) {
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, modelPosition); 
-			model = glm::rotate(model, glm::radians(modelRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-			model = glm::rotate(model, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::rotate(model, glm::radians(modelRotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
-			model = glm::scale(model, glm::vec3(modelSize)); 
-			glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-			ourModel.Draw(*activeShader);
+			for (const Model& currModel : allModels)
+			{
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, modelPosition);
+				model = glm::rotate(model, glm::radians(modelRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
+				model = glm::rotate(model, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
+				model = glm::rotate(model, glm::radians(modelRotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
+				model = glm::scale(model, glm::vec3(modelSize));
+				glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+				currModel.Draw(*activeShader);
+			}
 		}
 
 		// Draw 2D plane
@@ -482,7 +491,7 @@ int main() {
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Modify Model Properties");
 		ImGui::Checkbox("Draw Model", &drawModel);
-		ImGui::SliderFloat("Model Scale", &modelSize, 0.1f, 2.0f);
+		ImGui::SliderFloat("Model Scale", &modelSize, 0.01f, 2.0f);
 		ImGui::DragFloat3("Model Position", glm::value_ptr(modelPosition), 0.1f);
 		ImGui::SliderFloat("Model Rotation X", &modelRotationX, 0.0f, 360.0f);
 		ImGui::SliderFloat("Model Rotation Y", &modelRotationY, 0.0f, 360.0f);
