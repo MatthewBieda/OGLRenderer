@@ -18,7 +18,7 @@ constexpr float YAW = -90.0f;
 constexpr float PITCH = 0.0f;
 constexpr float SPEED = 2.5f;
 constexpr float SENSITIVITY = 0.2f;
-constexpr float ZOOM = 45.0f;
+constexpr float ZOOM = 60.0f;
 
 static constexpr glm::vec3 WorldUp{ 0.0f, 1.0f, 0.0f };
 

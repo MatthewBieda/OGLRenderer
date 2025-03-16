@@ -147,12 +147,6 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\.gitignore" />
-    <None Include="shaders\model.vert">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\model.frag">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="assets\models\backpack\backpack.mtl">
       <Filter>Assets\Models\backpack</Filter>
     </None>

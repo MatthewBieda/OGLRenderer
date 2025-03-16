@@ -186,87 +186,15 @@ int main() {
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
-	stbi_set_flip_vertically_on_load(true);
-
 	Shader phongShading("shaders/phong.vert", "shaders/phong.frag");
 	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
 	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
-	Shader modelShader("shaders/model.vert", "shaders/model.frag");
+	Model checkeredPlane("assets/models/checkeredPlane/checkeredPlane.obj");
+	allModels.push_back(std::move(checkeredPlane));
 
-	Model betterCube("assets/models/betterCube/betterCube.obj");
-	allModels.push_back(std::move(betterCube));
-
-	std::array <float, 192> cube =
-	{
-		// positions          // normals		  // tex coords
-
-		// Front face
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f,
-
-		// Back face
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f,
-
-		// Left face
-		-0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-
-		// Right face
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-
-		 // Bottom face
-		 -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f,
-		  0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f,
-		  0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f,
-		 -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f,
-
-		 // Top face
-		 -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f,
-		  0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f,
-		  0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f,
-		 -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f
-	};
-
-	std::array<uint32_t, 36> indices = {
-		// Front face
-		0, 1, 2,  2, 3, 0,
-		// Back face
-		4, 5, 6,  6, 7, 4,
-		// Left face
-		8, 9, 10,  10, 11, 8,
-		// Right face
-		12, 13, 14,  14, 15, 12,
-		// Bottom face
-		16, 17, 18,  18, 19, 16,
-		// Top face
-		20, 21, 22,  22, 23, 20
-	};
-
-	std::array<glm::vec3, 10> cubePositions =
-	{
-		glm::vec3(0.0f,  0.0f,  0.0f),
-		glm::vec3(2.0f,  5.0f, -15.0f),
-		glm::vec3(-1.5f, -2.2f, -2.5f),
-		glm::vec3(-3.8f, -2.0f, -12.3f),
-		glm::vec3(2.4f, -0.4f, -3.5f),
-		glm::vec3(-1.7f,  3.0f, -7.5f),
-		glm::vec3(1.3f, -2.0f, -2.5f),
-		glm::vec3(1.5f,  2.0f, -2.5f),
-		glm::vec3(1.5f,  0.2f, -1.5f),
-		glm::vec3(-1.3f,  1.0f, -1.5f)
-	};
+	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj");
 
 	std::array<glm::vec3, 4> pointLightPositions =
 	{
@@ -275,63 +203,6 @@ int main() {
 		glm::vec3(-4.0f, 2.0f, -12.0f),
 		glm::vec3(0.0f, 0.0f, -3.0f)
 	};
-
-	// Light Source VAO configuration
-	uint32_t lightVAO, VBO, EBO;
-	glGenVertexArrays(1, &lightVAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
-
-	glBindVertexArray(lightVAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cube), cube.data(), GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(), GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	// 2D PLANE
-	std::array <float, 32> Plane = {
-		 // positions      // normals         
-		 10,  0.0f,  10,   0.0f,  1.0f,  0.0f,
-		 10,  0.0f, -10,   0.0f,  1.0f,  0.0f,
-		-10,  0.0f, -10,   0.0f,  1.0f,  0.0f,
-		-10,  0.0f,  10,   0.0f,  1.0f,  0.0f
-	};
-
-	std::array<uint32_t, 6> planeIndices = 
-	{
-		0, 1, 3,
-		1, 2, 3
-	};
-
-	uint32_t planeVAO, planeVBO, planeEBO;
-
-	glGenVertexArrays(1, &planeVAO);
-	glGenBuffers(1, &planeVBO);
-	glGenBuffers(1, &planeEBO);
-
-	glBindVertexArray(planeVAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Plane), Plane.data(), GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planeEBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(planeIndices), planeIndices.data(), GL_STATIC_DRAW);
-
-	// Position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	// Normal attribute
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	glBindVertexArray(0);
-
 
 	// IMGUI Initialization
 	IMGUI_CHECKVERSION();
@@ -346,7 +217,7 @@ int main() {
 
 	bool drawModel = true;
 	float modelSize = 1.0f;
-	glm::vec3 modelPosition{ 0.0f, 0.0f, 0.0f };
+	glm::vec3 modelPosition{ 0.0f, -3.0f, 0.0f };
 	float modelRotationX = 0.0f;
 	float modelRotationY = 0.0f;
 	float modelRotationZ = 0.0f;
@@ -466,19 +337,10 @@ int main() {
 			}
 		}
 
-		// Draw 2D plane
-		glBindVertexArray(planeVAO);
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
-		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-
 		lightSource.use();
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
-		glBindVertexArray(lightVAO);
 		for (uint32_t i = 0; i < 4; i++)
 		{
 			glm::mat4 model = glm::mat4(1.0f);
@@ -486,7 +348,7 @@ int main() {
 			model = glm::scale(model, glm::vec3(0.2f));
 			glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+			lightSourceSphere.Draw(lightSource);
 		}
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Modify Model Properties");
@@ -550,11 +412,6 @@ int main() {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-
-	// De-allocate resources
-	glDeleteVertexArrays(1, &lightVAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
 
 	glfwDestroyWindow(window);
 	glfwTerminate();

@@ -186,8 +186,6 @@
     <None Include="shaders\gouraud.vert" />
     <None Include="shaders\lightSource.frag" />
     <None Include="shaders\lightSource.vert" />
-    <None Include="shaders\model.frag" />
-    <None Include="shaders\model.vert" />
     <None Include="shaders\phong.frag" />
     <None Include="shaders\phong.vert" />
   </ItemGroup>
