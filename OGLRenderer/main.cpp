@@ -50,7 +50,7 @@ float dirDiffuse = 0.4f;
 float dirSpecular = 0.5f;
 
 // Flashlight toggle
-bool useFlashlight = true;
+bool useFlashlight = false;
 
 // Timing
 float deltaTime = 0.0f; // Time between current frame and last frame
@@ -306,19 +306,18 @@ int main() {
 			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].quadratic").c_str()), quadratic);
 		}
 
-		// Spotlights
-		if (useFlashlight) {
-			glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.position"), 1, glm::value_ptr(camera.Position));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.direction"), 1, glm::value_ptr(camera.Front));
-			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
-			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
-			glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.constant"), constant);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.linear"), linear);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.quadratic"), quadratic);
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
-			glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
-		}
+		// Spot light
+		glUniform1i(glGetUniformLocation(activeShader->ID, "enableSpotLight"), useFlashlight ? 1 : 0);
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.position"), 1, glm::value_ptr(camera.Position));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.direction"), 1, glm::value_ptr(camera.Front));
+		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
+		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
+		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
+		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.constant"), constant);
+		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.linear"), linear);
+		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.quadratic"), quadratic);
+		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
+		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
 
 		// View / Projection transformations
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);

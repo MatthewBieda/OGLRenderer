@@ -26,7 +26,7 @@ static constexpr glm::vec3 WorldUp{ 0.0f, 1.0f, 0.0f };
 struct Camera
 {
     // Camera Attributes
-    glm::vec3 Position{ 0.0f, 0.0f, 5.0f };
+    glm::vec3 Position{ 0.0f, 2.0f, 8.0f };
     glm::vec3 Front{ 0.0f, 0.0f, -1.0f };
     glm::vec3 Up{ 0.0f, 1.0f, 0.0f };
     glm::vec3 Right{ 1.0f, 0.0f, 0.0f };
@@ -41,7 +41,7 @@ struct Camera
     float Zoom{ ZOOM };
 
     // Default Constructor
-    Camera(glm::vec3 position = {0.0f, 0.0f, 5.0f}, float yaw = YAW, float pitch = PITCH);
+    Camera(glm::vec3 position = {0.0f, 2.0f, 8.0f}, float yaw = YAW, float pitch = PITCH);
 
     glm::mat4 GetViewMatrix() const;
     void ProcessKeyboard(Camera_Movement direction, float deltaTime);
