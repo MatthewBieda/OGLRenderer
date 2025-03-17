@@ -7,8 +7,8 @@
 #include "mesh.hpp"
 #include "model.hpp"
 
-Model::Model(const std::string& path, bool gamma)
-	: gammaCorrection(gamma)
+Model::Model(const std::string& path, bool gamma, const std::string& modelName)
+	: gammaCorrection(gamma), name(modelName)
 {
 	loadModel(path);
 }
@@ -18,7 +18,12 @@ Model::Model(Model&& other) noexcept
 	  directory(std::move(other.directory)),
 	  textures_loaded(std::move(other.textures_loaded)),
 	  gammaCorrection(other.gammaCorrection),
-	  hasTextures(other.hasTextures)
+	  hasTextures(other.hasTextures),
+	  position(other.position),
+	  rotation(other.rotation),
+	  scale(other.scale),
+	  visible(other.visible),
+	  name(std::move(other.name))
 {
 }
 
@@ -30,6 +35,11 @@ Model& Model::operator=(Model&& other) noexcept
 		textures_loaded = std::move(other.textures_loaded);
 		gammaCorrection = other.gammaCorrection;
 		hasTextures = other.hasTextures;
+		position = other.position;
+		rotation = other.rotation;
+		scale = other.scale;
+		visible = other.visible;
+		name = std::move(other.name);
 	}
 	return *this;
 }

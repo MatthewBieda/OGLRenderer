@@ -191,8 +191,19 @@ int main() {
 	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
-	Model checkeredPlane("assets/models/checkeredPlane/checkeredPlane.obj");
+	stbi_set_flip_vertically_on_load(true);
+
+	Model checkeredPlane("assets/models/checkeredPlane/checkeredPlane.obj", false, "Checkered Plane");
+	checkeredPlane.position = glm::vec3(0.0f, -2.0f, 0.0f);
 	allModels.push_back(std::move(checkeredPlane));
+
+	Model backpack("assets/models/backpack/backpack.obj", false, "Backpack");
+	backpack.position= glm::vec3{ 4.0f, 0.0f, 0.0f };
+	allModels.push_back(std::move(backpack));
+
+	Model human("assets/models/human/human.obj", false, "human");
+	human.position = glm::vec3{0.0f, -2.0f, 0.0f};
+	allModels.push_back(std::move(human));
 
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj");
 
@@ -216,11 +227,6 @@ int main() {
 	ShadingMode currentShadingMode = BLINNPHONG;
 
 	bool drawModel = true;
-	float modelSize = 1.0f;
-	glm::vec3 modelPosition{ 0.0f, -3.0f, 0.0f };
-	float modelRotationX = 0.0f;
-	float modelRotationY = 0.0f;
-	float modelRotationZ = 0.0f;
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -323,15 +329,16 @@ int main() {
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "defaultColor"), 1, glm::value_ptr(defaultColor));
 
 		// Render all models
-		if (drawModel) {
-			for (const Model& currModel : allModels)
-			{
+		for (const Model& currModel : allModels)
+		{
+			if (currModel.visible) {
 				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, modelPosition);
-				model = glm::rotate(model, glm::radians(modelRotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-				model = glm::rotate(model, glm::radians(modelRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-				model = glm::rotate(model, glm::radians(modelRotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
-				model = glm::scale(model, glm::vec3(modelSize));
+				model = glm::translate(model, currModel.position);
+				model = glm::rotate(model, glm::radians(currModel.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+				model = glm::rotate(model, glm::radians(currModel.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+				model = glm::rotate(model, glm::radians(currModel.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+				model = glm::scale(model, glm::vec3(currModel.scale));
+
 				glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 				currModel.Draw(*activeShader);
 			}
@@ -352,12 +359,27 @@ int main() {
 		}
 		ImGui::Begin("OGLRenderer Interface");
 		ImGui::Text("Modify Model Properties");
-		ImGui::Checkbox("Draw Model", &drawModel);
-		ImGui::SliderFloat("Model Scale", &modelSize, 0.01f, 2.0f);
-		ImGui::DragFloat3("Model Position", glm::value_ptr(modelPosition), 0.1f);
-		ImGui::SliderFloat("Model Rotation X", &modelRotationX, 0.0f, 360.0f);
-		ImGui::SliderFloat("Model Rotation Y", &modelRotationY, 0.0f, 360.0f);
-		ImGui::SliderFloat("Model Rotation Z", &modelRotationZ, 0.0f, 360.0f);
+
+		if (ImGui::CollapsingHeader("Models"))
+		{
+			for (int i = 0; i < allModels.size(); ++i)
+			{
+				Model& model = allModels[i];
+
+				ImGui::PushID(i);
+				if (ImGui::TreeNode(model.name.c_str()))
+				{
+					ImGui::Checkbox("Visible", &model.visible);
+					ImGui::SliderFloat("Scale", &model.scale, 0.01f, 2.0f);
+					ImGui::DragFloat3("Model Position", glm::value_ptr(model.position), 0.1f);
+					ImGui::SliderFloat("Model Rotation X", &model.rotation.x, 0.0f, 360.0f);
+					ImGui::SliderFloat("Model Rotation Y", &model.rotation.y, 0.0f, 360.0f);
+					ImGui::SliderFloat("Model Rotation Z", &model.rotation.z, 0.0f, 360.0f);
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+		}
 
 		ImGui::Separator();
 		ImGui::Text("Shading Model");
