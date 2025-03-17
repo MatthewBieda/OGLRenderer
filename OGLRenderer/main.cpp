@@ -203,6 +203,7 @@ int main() {
 
 	Model human("assets/models/human/human.obj", false, "human");
 	human.position = glm::vec3{0.0f, -2.0f, 0.0f};
+	human.scale = 0.4f;
 	allModels.push_back(std::move(human));
 
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj");
