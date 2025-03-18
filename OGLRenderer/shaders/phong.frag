@@ -42,7 +42,7 @@ struct SpotLight {
     vec3 specular;       
 };
 
-#define NR_POINT_LIGHTS 4
+uniform int NR_POINT_LIGHTS;
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -50,7 +50,7 @@ in vec2 TexCoords;
 
 uniform vec3 viewPos;
 uniform DirLight dirLight;
-uniform PointLight pointLights[NR_POINT_LIGHTS];
+uniform PointLight pointLights[10]; // size of max point lights
 uniform SpotLight spotLight;
 uniform Material material;
 

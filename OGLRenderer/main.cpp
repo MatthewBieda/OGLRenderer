@@ -208,13 +208,8 @@ int main() {
 
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj");
 
-	std::array<glm::vec3, 4> pointLightPositions =
-	{
-		glm::vec3(0.7f, 0.2f, 2.0f),
-		glm::vec3(2.3f, -3.3f, -4.0f),
-		glm::vec3(-4.0f, 2.0f, -12.0f),
-		glm::vec3(0.0f, 0.0f, -3.0f)
-	};
+	std::vector<glm::vec3> pointLightPositions = { glm::vec3(0.7f, 0.2f, 2.0f) };
+	const int MAX_POINT_LIGHTS = 10;
 
 	// IMGUI Initialization
 	IMGUI_CHECKVERSION();
@@ -293,7 +288,8 @@ int main() {
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.specular"), 1, glm::value_ptr(glm::vec3(dirSpecular)));
 
 		// Point Lights
-		for (uint32_t i = 0; i < 4; ++i)
+		glUniform1i(glGetUniformLocation(activeShader->ID, "NR_POINT_LIGHTS"), pointLightPositions.size());
+		for (uint32_t i = 0; i < pointLightPositions.size(); ++i)
 		{
 			std::string number = std::to_string(i);
 
@@ -348,7 +344,7 @@ int main() {
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
-		for (uint32_t i = 0; i < 4; i++)
+		for (uint32_t i = 0; i < pointLightPositions.size(); i++)
 		{
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, pointLightPositions[i]);
@@ -400,6 +396,23 @@ int main() {
 		ImGui::SliderFloat("Ambient Strength", &ambientStrength, 0.0f, 1.0f);
 		ImGui::SliderFloat("Diffuse Strength", &diffuseStrength, 0.0f, 1.0f);
 		ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 1.0f);
+
+		ImGui::SameLine();
+		ImGui::Text("Point Lights");
+		ImGui::Text("Active Lights: %zu/%d", pointLightPositions.size(), MAX_POINT_LIGHTS);
+
+		if (ImGui::Button("Add Light") && pointLightPositions.size() < MAX_POINT_LIGHTS)
+		{
+			// Add a new light at a default position near the camera
+			glm::vec3 newLightPos{ 0.0f, 0.0f, 0.0f };
+			pointLightPositions.push_back(newLightPos);
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("Remove Light") && pointLightPositions.size() > 1)
+		{
+			pointLightPositions.pop_back();
+		}
 
 		ImGui::Separator();
 		ImGui::Text("Point Light Positions");
