@@ -24,6 +24,7 @@ Skeletal Animations
 Anti-Aliasing
 
 Version 3:
+
 Vulkan Rewrite
 Hardware Accelerated Ray Tracing
 DLSS
