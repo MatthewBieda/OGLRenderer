@@ -55,6 +55,7 @@ uniform SpotLight spotLight;
 uniform Material material;
 
 uniform bool hasTextures;
+uniform bool enableSpotLight;
 uniform vec3 defaultColor;
 
 // function prototypes
@@ -84,7 +85,9 @@ void main()
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
     }
     // phase 3: spot light
-    result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
+    if (enableSpotLight) {
+        result += CalcSpotLight(spotLight, norm, FragPos, viewDir);
+    }
     
     FragColor = vec4(result, 1.0);
 }

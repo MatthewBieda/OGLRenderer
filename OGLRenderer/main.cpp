@@ -201,7 +201,7 @@ int main() {
 	backpack.position= glm::vec3{ 4.0f, 0.0f, 0.0f };
 	allModels.push_back(std::move(backpack));
 
-	Model human("assets/models/human/human.obj", false, "human");
+	Model human("assets/models/human/human.obj", false, "Human");
 	human.position = glm::vec3{0.0f, -2.0f, 0.0f};
 	human.scale = 0.4f;
 	allModels.push_back(std::move(human));
