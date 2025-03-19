@@ -198,13 +198,11 @@ int main() {
 	allModels.push_back(std::move(checkeredPlane));
 
 	Model backpack("assets/models/backpack/backpack.obj", false, "Backpack");
-	backpack.position= glm::vec3{ 4.0f, 0.0f, 0.0f };
-	allModels.push_back(std::move(backpack));
+	backpack.position = glm::vec3{ 4.0f, 0.0f, 0.0f };
 
 	Model human("assets/models/human/human.obj", false, "Human");
 	human.position = glm::vec3{0.0f, -2.0f, 0.0f};
 	human.scale = 0.4f;
-	allModels.push_back(std::move(human));
 
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj");
 
@@ -223,6 +221,8 @@ int main() {
 	ShadingMode currentShadingMode = BLINNPHONG;
 
 	bool drawModel = true;
+	bool humanAdded = false;
+	bool backpackAdded = false;
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -354,6 +354,22 @@ int main() {
 			lightSourceSphere.Draw(lightSource);
 		}
 		ImGui::Begin("OGLRenderer Interface");
+		ImGui::Text("Scene Construction");
+		ImGui::Separator();
+
+		if (ImGui::Button("Add Human Model") && !humanAdded)
+		{
+			allModels.push_back(std::move(human));
+			humanAdded = true;
+		}
+
+		if (ImGui::Button("Add Backpack Model") && !backpackAdded)
+		{
+			allModels.push_back(std::move(backpack));
+			backpackAdded = true;
+		}
+
+		ImGui::Separator();
 		ImGui::Text("Modify Model Properties");
 
 		if (ImGui::CollapsingHeader("Models"))
