@@ -188,7 +188,6 @@ int main() {
 
 	Shader phongShading("shaders/phong.vert", "shaders/phong.frag");
 	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
-	Shader gouraudShading("shaders/gouraud.vert", "shaders/gouraud.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 
 	stbi_set_flip_vertically_on_load(true);
@@ -256,9 +255,6 @@ int main() {
 				break;
 			case BLINNPHONG:
 				activeShader = &blinnPhongShading;
-				break;
-			case GOURAUD:
-				activeShader = &gouraudShading;
 				break;
 			default:
 				activeShader = &blinnPhongShading;
@@ -397,14 +393,12 @@ int main() {
 		ImGui::Text("Shading Model");
 		bool isPhong = (currentShadingMode == PHONG);
 		bool isBlinnPhong = (currentShadingMode == BLINNPHONG);
-		bool isGouraud = (currentShadingMode == GOURAUD);
 
 		if (ImGui::RadioButton("Phong", isPhong)) currentShadingMode = PHONG;
 		if (ImGui::RadioButton("BlinnPhong", isBlinnPhong)) currentShadingMode = BLINNPHONG;
-		if (ImGui::RadioButton("Gouraud", isGouraud)) currentShadingMode = GOURAUD;
 
 		ImGui::Separator();
-		ImGui::Text("Material Properties");
+		ImGui::Text("Specular Exponent");
 		ImGui::SliderFloat("Shininess", &materialShininess, 1.0f, 256.0f);
 
 		ImGui::Separator();

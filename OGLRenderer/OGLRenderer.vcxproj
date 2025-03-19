@@ -182,8 +182,6 @@
     <None Include="assets\models\backpack\backpack.mtl" />
     <None Include="shaders\blinnPhong.frag" />
     <None Include="shaders\blinnPhong.vert" />
-    <None Include="shaders\gouraud.frag" />
-    <None Include="shaders\gouraud.vert" />
     <None Include="shaders\lightSource.frag" />
     <None Include="shaders\lightSource.vert" />
     <None Include="shaders\phong.frag" />

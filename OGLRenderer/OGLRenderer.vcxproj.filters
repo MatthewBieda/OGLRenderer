@@ -134,12 +134,6 @@
     <None Include="shaders\lightSource.vert">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="shaders\gouraud.frag">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\gouraud.vert">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="shaders\blinnPhong.frag">
       <Filter>Shaders</Filter>
     </None>
