@@ -1,7 +1,7 @@
 # 3D Rendering Engine Development Roadmap
 
 ## Version 1
-- Phong Lighting (Gouraud, Phong, Blinn-Phong)
+- Phong Lighting (Phong & Blinn-Phong)
 - 3D Model Loading (Supporting Diffuse & Specular Maps)
 - Free Camera
 - UI Mode
@@ -9,7 +9,7 @@
 - Point Lights (With proper Attenuation)
 - Spotlights (Implemented as a flashlight)
 - Wireframe Mode
-- All paramaters dynamically adjustable in the application
+- All parameters dynamically adjustable in the application
 
 ## Version 2
 - Physically Based Materials and Lighting (Cook-Torrance)
@@ -33,3 +33,7 @@
 - Volumetrics
 - Caustics
 - Spherical Harmonics
+
+No build system implemented yet, just open the .sln file with Visual Studio if you want to play around with it.
+
+Spacebar to switch between Free Camera and UI Mode. 

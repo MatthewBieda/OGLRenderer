@@ -406,9 +406,8 @@ int main() {
 		ImGui::SliderFloat("Diffuse Strength", &diffuseStrength, 0.0f, 1.0f);
 		ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 1.0f);
 
-		ImGui::SameLine();
-		ImGui::Text("Point Lights");
-		ImGui::Text("Active Lights: %zu/%d", pointLightPositions.size(), MAX_POINT_LIGHTS);
+		ImGui::Separator();
+		ImGui::Text("Active Point Lights: %zu/%d", pointLightPositions.size(), MAX_POINT_LIGHTS);
 
 		if (ImGui::Button("Add Light") && pointLightPositions.size() < MAX_POINT_LIGHTS)
 		{
