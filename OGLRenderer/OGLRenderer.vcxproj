@@ -157,7 +157,6 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="model.cpp" />
-    <ClCompile Include="modelManager.cpp" />
     <ClCompile Include="shader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -173,7 +172,6 @@
     <ClInclude Include="include\camera.hpp" />
     <ClInclude Include="include\mesh.hpp" />
     <ClInclude Include="include\model.hpp" />
-    <ClInclude Include="include\modelManager.hpp" />
     <ClInclude Include="include\shader.hpp" />
   </ItemGroup>
   <ItemGroup>

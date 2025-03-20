@@ -13,7 +13,6 @@
 
 #include "shader.hpp"
 #include "camera.hpp"
-#include "modelManager.hpp"
 #include "model.hpp"
 
 #include <iostream>
