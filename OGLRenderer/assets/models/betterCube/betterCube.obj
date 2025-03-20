@@ -1,0 +1,48 @@
+# Cube model with Blinn-Phong shading
+mtllib Cube.mtl  # Link to material file
+
+# Vertex positions
+v -0.5 -0.5 -0.5
+v  0.5 -0.5 -0.5
+v  0.5  0.5 -0.5
+v -0.5  0.5 -0.5
+v -0.5 -0.5  0.5
+v  0.5 -0.5  0.5
+v  0.5  0.5  0.5
+v -0.5  0.5  0.5
+
+# Texture coordinates
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+vt 0.0 1.0
+
+# Vertex normals
+vn  0.0  0.0 -1.0
+vn  0.0  0.0  1.0
+vn -1.0  0.0  0.0
+vn  1.0  0.0  0.0
+vn  0.0 -1.0  0.0
+vn  0.0  1.0  0.0
+
+# Use Blinn-Phong material
+usemtl BlinnPhongMaterial
+
+# Faces (each face references v/vt/vn)
+# Front face
+f 1/1/1 4/4/1 3/3/1 2/2/1  # Swapped 2nd and 4th vertex
+
+# Back face
+f 5/1/2 6/2/2 7/3/2 8/4/2
+
+# Left face
+f 8/1/3 4/2/3 1/3/3 5/4/3
+
+# Right face
+f 2/1/4 3/4/4 7/3/4 6/2/4  # Swapped 2nd and 4th vertex
+
+# Bottom face
+f 1/1/5 2/2/5 6/3/5 5/4/5
+
+# Top face
+f 4/1/6 8/4/6 7/3/6 3/2/6  # Swapped 2nd and 4th vertex
