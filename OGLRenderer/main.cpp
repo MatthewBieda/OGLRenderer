@@ -22,6 +22,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 void processInput(GLFWwindow* window);
+void processControllerInput();
 
 const int SCR_WIDTH = 1920;
 const int SCR_HEIGHT = 1080;
@@ -33,6 +34,32 @@ bool uiActive = false;
 bool firstMouse = true;
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
+
+// Gamepad State
+bool controllerConnected = false;
+float leftStickX = 0.0f;
+float leftStickY = 0.0f;
+
+float rightStickX = 0.0f;
+float rightStickY = 0.0f;
+
+float leftTrigger = 0.0f;
+float rightTrigger = 0.0f;
+
+bool aButtonPressed = false;
+bool bButtonPressed = false;
+bool xButtonPressed = false;
+bool yButtonPressed = false;
+
+bool leftBumper = false;
+bool rightBumper = false;
+
+bool dpadUp = false;
+bool dpadDown = false;
+bool dpadLeft = false;
+bool dpadRight = false;
+
+const float CONTROLLER_DEADZONE = 0.15f;
 
 // Material properties
 float materialShininess = 32.0f;
@@ -156,6 +183,22 @@ int main() {
 		return -1;
 	}
 
+	glfwSetJoystickCallback([](int jid, int event) {
+	if (jid == GLFW_JOYSTICK_1)
+	{
+		if (event == GLFW_CONNECTED)
+		{
+			std::cout << "Xbox controller connected" << std::endl;
+			controllerConnected = true;
+		}
+		else if (event == GLFW_DISCONNECTED)
+		{
+			std::cout << "Xbox controller disconnected" << std::endl;
+			controllerConnected = false;
+		}
+	}
+	});
+
 	// enable debug context
 	int flags;
 	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
@@ -179,7 +222,12 @@ int main() {
 
 	// configure global state
 	glEnable(GL_DEPTH_TEST);
+
+	// MSAA
 	glEnable(GL_MULTISAMPLE);
+
+	// Gamma Correction
+	// glEnable(GL_FRAMEBUFFER_SRGB);
 
 	bool wireframe = false;
 
@@ -239,6 +287,7 @@ int main() {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
 
+		processControllerInput();
 		processInput(window);
 
 		glClearColor(0.529f, 0.808f, 0.922f, 1.0f);
@@ -446,6 +495,17 @@ int main() {
 		ImGui::Checkbox("Flaslight Toggle", &useFlashlight);
 		ImGui::Checkbox("Wireframe Toggle", &wireframe);
 
+		ImGui::Separator();
+		ImGui::Text("Controller Status");
+		ImGui::Text("Controller %s", controllerConnected ? "Connected" : "Disconnected");
+		if (controllerConnected)
+		{
+			ImGui::Text("Left Stick: X=%.2f, Y=%.2f", leftStickX, leftStickY);
+			ImGui::Text("Right Stick: X=%.2f, Y=%.2f", rightStickX, rightStickY);
+			ImGui::Text("Triggers: L=%.2f, R=%.2f", leftTrigger, rightTrigger);
+			ImGui::Text("Buttons: A=%d, B=%d, X=%d, Y=%d", aButtonPressed, bButtonPressed, xButtonPressed, yButtonPressed);
+		}
+
 		ImGui::End();
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -495,6 +555,44 @@ void processInput(GLFWwindow* window)
 	{
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 	}
+
+	// Process controller inputs
+	if (controllerConnected)
+	{
+		// Left stick for movement (up/down/left/right)
+		if (leftStickY < -CONTROLLER_DEADZONE)
+			camera.ProcessKeyboard(FORWARD, deltaTime * std::abs(leftStickY));
+		if (leftStickY > CONTROLLER_DEADZONE)
+			camera.ProcessKeyboard(BACKWARD, deltaTime * leftStickY);
+		if (leftStickX < -CONTROLLER_DEADZONE)
+			camera.ProcessKeyboard(LEFT, deltaTime * std::abs(leftStickX));
+		if (leftStickX > CONTROLLER_DEADZONE)
+			camera.ProcessKeyboard(RIGHT, deltaTime * leftStickX);
+	}
+
+	if (std::abs(rightStickX) > CONTROLLER_DEADZONE || std::abs(rightStickY) > CONTROLLER_DEADZONE)
+	{
+		float sensitivity = 2.0f; // adjust to control rotation speed
+		camera.ProcessMouseMovement(rightStickX * sensitivity, -rightStickY * sensitivity);
+	}
+
+	// Bumpers for up/down movement or zoom
+	if (leftBumper)
+	{
+		camera.Position.y -= cameraSpeed;
+	}
+	if (rightBumper)
+	{
+		camera.Position.y += cameraSpeed;
+	}
+
+	// use dpad for UI nav or other controls
+	static bool yButtonPrevState = false;
+	if (yButtonPressed && !yButtonPrevState)
+	{
+		useFlashlight = !useFlashlight;
+	}
+	yButtonPrevState = yButtonPressed;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) 
@@ -533,4 +631,46 @@ void mouse_callback(GLFWwindow* window, double xPosIn, double yPosIn)
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)
 {
 	camera.ProcessMouseScroll(static_cast<float>(yOffset));
+}
+
+void processControllerInput()
+{
+	controllerConnected = glfwJoystickPresent(GLFW_JOYSTICK_1);
+
+	if (controllerConnected)
+	{
+		int axisCount;
+		const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axisCount);
+
+		int buttonCount;
+		const uint8_t* buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &buttonCount);
+
+		if (axisCount >= 6 && buttonCount >= 14)
+		{
+			// Xbox 360 controller layout in GLFW
+			// Get analog stick values and apply deadzone
+			leftStickX = std::abs(axes[0]) > CONTROLLER_DEADZONE ? axes[0] : 0.0f;
+			leftStickY = std::abs(axes[1]) > CONTROLLER_DEADZONE ? axes[1] : 0.0f;
+			rightStickX = std::abs(axes[2]) > CONTROLLER_DEADZONE ? axes[2] : 0.0f;
+			rightStickY = std::abs(axes[3]) > CONTROLLER_DEADZONE ? axes[3] : 0.0f;
+
+			// Triggers (range from -1 to 1, convert to 0 or 1)
+			leftTrigger = (axes[4] + 1.0f) * 0.5f;
+			rightTrigger = (axes[5] + 1.0f) * 0.5f;
+
+			// Button states
+			aButtonPressed = buttons[0] == GLFW_PRESS;
+			bButtonPressed = buttons[1] == GLFW_PRESS;
+			xButtonPressed = buttons[2] == GLFW_PRESS;
+			yButtonPressed = buttons[3] == GLFW_PRESS;
+			leftBumper = buttons[4] == GLFW_PRESS;
+			rightBumper = buttons[5] == GLFW_PRESS;
+
+			// D-Pad states
+			dpadUp = buttons[10] == GLFW_PRESS;
+			dpadRight = buttons[11] == GLFW_PRESS;
+			dpadDown = buttons[12] == GLFW_PRESS;
+			dpadLeft = buttons[13] == GLFW_PRESS;
+		}
+	}
 }
