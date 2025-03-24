@@ -61,6 +61,13 @@ bool dpadRight = false;
 
 const float CONTROLLER_DEADZONE = 0.15f;
 
+// Jump state
+bool isJumping = false;
+float jumpHeight = 2.0f;
+float jumpVelocity = 5.0f;
+float gravity = 9.8f;
+float initialYPosition = 0.0f;
+
 // Material properties
 float materialShininess = 32.0f;
 
@@ -289,6 +296,23 @@ int main() {
 
 		processControllerInput();
 		processInput(window);
+
+		// Physics update
+		if (isJumping)
+		{
+			// Apply velocity to position
+			camera.Position.y += jumpVelocity * deltaTime;
+
+			// Apply gravity to velocity
+			jumpVelocity -= gravity * deltaTime;
+
+			// Check if landed
+			if (camera.Position.y <= initialYPosition)
+			{
+				camera.Position.y = initialYPosition;
+				isJumping = false;
+			}
+		}
 
 		glClearColor(0.529f, 0.808f, 0.922f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -593,6 +617,14 @@ void processInput(GLFWwindow* window)
 		useFlashlight = !useFlashlight;
 	}
 	yButtonPrevState = yButtonPressed;
+
+	static bool aButtonPrevState = false;
+	if (aButtonPressed && !aButtonPrevState && !isJumping)
+	{
+		isJumping = true;
+		jumpVelocity = 5.0f;
+	}
+	aButtonPrevState = aButtonPressed;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) 
