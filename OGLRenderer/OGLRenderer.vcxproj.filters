@@ -138,6 +138,12 @@
     <None Include="assets\models\backpack\backpack.mtl">
       <Filter>Assets\Models\backpack</Filter>
     </None>
+    <None Include="shaders\skybox.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\skybox.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\textures\container.jpg">
