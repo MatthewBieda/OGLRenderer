@@ -144,6 +144,18 @@
     <None Include="shaders\skybox.vert">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="shaders\shadowMap.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\shadowMap.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\debugQuad.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\debugQuad.frag">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\textures\container.jpg">
