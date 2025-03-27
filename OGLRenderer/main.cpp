@@ -350,7 +350,7 @@ int main() {
 	debugDepthQuad.use();
 	glUniform1i(glGetUniformLocation(debugDepthQuad.ID, "depthMap"), 0);
 
-	stbi_set_flip_vertically_on_load(true);
+	//stbi_set_flip_vertically_on_load(true);
 
 	Model checkeredPlane("assets/models/checkeredPlane/checkeredPlane.obj", false, "Checkered Plane");
 	checkeredPlane.position = glm::vec3(0.0f, -2.0f, 0.0f);
@@ -359,14 +359,11 @@ int main() {
 	backpack.position = glm::vec3{ 4.0f, 0.0f, 0.0f };
 
 	Model human("assets/models/human/human.obj", false, "Human");
-	human.position = glm::vec3{3.4f, 0.4f, 0.8f};
-	human.scale = 0.277f;
-	human.rotation.y = 143.062f;
 
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj");
 
-	Model staircase("assets/models/staircase/Untitled.obj");
-	allModels.push_back(std::move(staircase));
+	Model beachScene("assets/models/beachSceneTextured/beachScene.obj");
+	allModels.push_back(std::move(beachScene));
 
 	std::vector<glm::vec3> pointLightPositions = { glm::vec3(0.7f, 0.2f, 2.0f) };
 	const int MAX_POINT_LIGHTS = 10;
