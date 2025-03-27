@@ -42,3 +42,4 @@
 No build system implemented yet, just open the .sln file with Visual Studio if you want to play around with it.
 
 Spacebar to switch between Free Camera and UI Mode. 
+Plug in an Xbox controller to navigate around the scene and jump with the A button (no collision yet)
