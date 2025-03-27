@@ -11,17 +11,22 @@
 - Wireframe Mode
 - All parameters dynamically adjustable in the application
 
+## Version 1.5
+- Skyboxes
+- Dynamic PCF Shadow Maps
+- Anti-Aliasing (MSAA)
+- Controller Support
+
 ## Version 2
 - Physically Based Materials and Lighting (Cook-Torrance)
 - Normal / Bump / Parallax Mapping
 - HDR/Tone Mapping/Gamma Correction
 - Deferred Rendering
-- Shadows (Cascading Shadow Maps)
+- Cascading Shadow Maps
 - Bloom/SSAO/Reflections
-- Image Based Lighting / CubeMaps
+- Image Based Lighting
 - Instanced Rendering
 - Skeletal Animations
-- Anti-Aliasing
 
 ## Version 3
 - Vulkan Rewrite
