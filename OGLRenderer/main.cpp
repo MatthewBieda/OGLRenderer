@@ -372,6 +372,7 @@ int main() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
@@ -424,6 +425,28 @@ int main() {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+
+		ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 500.0f, 0.0f));
+		ImGui::SetNextWindowSize(ImVec2(500.0f, io.DisplaySize.y));
+
+		ImGuiWindowFlags window_flags = 
+			ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | 
+			ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | 
+			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | 
+			ImGuiWindowFlags_NoNavFocus;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+		ImGui::Begin("DockSpace Window", nullptr, window_flags);
+		ImGui::PopStyleVar(3);
+
+		// Create a dock space inside this window
+		ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
+		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+
+		ImGui::End();
 
 		// 1.) Render depth of scene to texture (from light's perspective)
 		glm::mat4 lightProjection;
