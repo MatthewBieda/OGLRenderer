@@ -115,12 +115,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\phong.vert">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\phong.frag">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="..\README.md" />
     <None Include="shaders\lightSource.frag">
       <Filter>Shaders</Filter>

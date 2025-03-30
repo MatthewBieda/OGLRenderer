@@ -246,7 +246,6 @@ int main() {
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
-	Shader phongShading("shaders/phong.vert", "shaders/phong.frag");
 	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 	Shader skyboxShader("shaders/skybox.vert", "shaders/skybox.frag");
@@ -377,7 +376,7 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
 
-	enum ShadingMode {PHONG, BLINNPHONG, GOURAUD};
+	enum ShadingMode {BLINNPHONG};
 	ShadingMode currentShadingMode = BLINNPHONG;
 
 	bool drawModel = true;
@@ -492,9 +491,6 @@ int main() {
 		Shader* activeShader;
 		switch(currentShadingMode) 
 		{
-			case PHONG:
-				activeShader = &phongShading;
-				break;
 			case BLINNPHONG:
 				activeShader = &blinnPhongShading;
 				break;
@@ -660,14 +656,6 @@ int main() {
 				ImGui::PopID();
 			}
 		}
-
-		ImGui::Separator();
-		ImGui::Text("Shading Model");
-		bool isPhong = (currentShadingMode == PHONG);
-		bool isBlinnPhong = (currentShadingMode == BLINNPHONG);
-
-		if (ImGui::RadioButton("Phong", isPhong)) currentShadingMode = PHONG;
-		if (ImGui::RadioButton("BlinnPhong", isBlinnPhong)) currentShadingMode = BLINNPHONG;
 
 		ImGui::Separator();
 		ImGui::Text("Specular Exponent");

@@ -184,8 +184,6 @@
     <None Include="shaders\debugQuad.vert" />
     <None Include="shaders\lightSource.frag" />
     <None Include="shaders\lightSource.vert" />
-    <None Include="shaders\phong.frag" />
-    <None Include="shaders\phong.vert" />
     <None Include="shaders\shadowMap.frag" />
     <None Include="shaders\shadowMap.vert" />
     <None Include="shaders\skybox.frag" />
