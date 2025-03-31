@@ -1,5 +1,2 @@
 *.exe
-*.pdb
-.vs
-OGLRenderer.vcxproj.user
-OGLRenderer/x64/
+build/

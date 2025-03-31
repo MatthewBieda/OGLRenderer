@@ -39,7 +39,13 @@
 - Caustics
 - Spherical Harmonics
 
-No build system implemented yet, just open the .sln file with Visual Studio if you want to play around with it.
+# Build Instructions
 
-Spacebar to switch between Free Camera and UI Mode. 
-Plug in an Xbox controller to navigate around the scene and jump with the A button (no collision yet)
+- cmake -S . -B build -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+- cmake --build build --config Release
+- Move output .exe file into root of project
+
+# Usage Instructions
+
+- Spacebar to switch between Free Camera and UI Mode. 
+- Plug in an Xbox controller to navigate around the scene and jump with the A button (no collision yet).
