@@ -41,9 +41,11 @@
 
 # Build Instructions
 
+- Install the latest CMake version from the official website
+- Run the following from the command line in project root directory
 - cmake -S . -B build -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 - cmake --build build --config Release
-- Move output .exe file into root of project
+- Move the .exe file into root of project
 
 # Usage Instructions
 
