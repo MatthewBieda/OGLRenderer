@@ -10,6 +10,8 @@
 - Spotlights (Implemented as a flashlight)
 - Wireframe Mode
 - All parameters dynamically adjustable in the application
+- 
+[![OGLRenderer v1.5](https://img.youtube.com/vi/pXJLGCEeVWc/0.jpg)](https://www.youtube.com/watch?v=pXJLGCEeVWc)
 
 ## Version 1.5
 - Skyboxes
