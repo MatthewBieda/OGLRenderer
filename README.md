@@ -51,6 +51,8 @@
 - cmake --build build --config Release
 - Move the .exe file into root of project
 
+Builds tested on Arch Linux (GNU) and Windows 11 (MSVC)
+
 # Usage Instructions
 
 - Spacebar to switch between Free Camera and UI Mode. 
