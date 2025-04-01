@@ -17,7 +17,7 @@
 - Anti-Aliasing (MSAA)
 - Controller Support
 
-https://www.youtube.com/watch?v=YpSUtLvGxqE
+[![OGLRenderer v1.5](https://img.youtube.com/vi/YpSUtLvGxqE/0.jpg)](https://www.youtube.com/watch?v=YpSUtLvGxqE)
 
 ## Version 2
 - Physically Based Materials and Lighting (Cook-Torrance)
