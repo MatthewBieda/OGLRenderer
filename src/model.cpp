@@ -7,13 +7,14 @@
 #include "mesh.hpp"
 #include "model.hpp"
 
+std::unordered_map<std::string, int> Model::modelNameCount;
+
 Model::Model(const std::string& path, bool gamma, const std::string& modelName)
-	: gammaCorrection(gamma), name(modelName)
+	: gammaCorrection(gamma)
 {
+	name = modelName + std::to_string(++modelNameCount[modelName]);
 	loadModel(path);
 }
-
-static int copyCounter = 0;
 
 Model::Model(const Model& other)
     : meshes(other.meshes),
@@ -25,7 +26,7 @@ Model::Model(const Model& other)
 	  rotation(other.rotation),
 	  scale(other.scale),
 	  visible(other.visible),
-	  name(other.name + std::to_string(++copyCounter))
+	  name(other.name + std::to_string(++modelNameCount[other.name]))
 {
 	std::cout << "Copying model with name: " << other.name << " to " << name << std::endl;
 }
@@ -42,7 +43,7 @@ Model& Model::operator=(const Model& other)
 		rotation = other.rotation;
 		scale = other.scale;
 		visible = other.visible;
-		name = other.name;
+		name = other.name + std::to_string(++modelNameCount[other.name]);
 	}
 	return *this;
 }

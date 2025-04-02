@@ -654,6 +654,17 @@ int main() {
 					ImGui::SliderFloat("Model Rotation X", &model.rotation.x, 0.0f, 360.0f);
 					ImGui::SliderFloat("Model Rotation Y", &model.rotation.y, 0.0f, 360.0f);
 					ImGui::SliderFloat("Model Rotation Z", &model.rotation.z, 0.0f, 360.0f);
+
+					// Remove Button for each model
+					if (ImGui::Button("Remove Model")) {
+						// Use the full model name to find and remove the model
+						allModels.erase(std::remove_if(allModels.begin(), allModels.end(),
+							[&model](const Model& m) {
+								return m.name == model.name; // Match by full name
+							}), allModels.end());
+						std::cout << "Removed model: " << model.name << std::endl;
+					}
+
 					ImGui::TreePop();
 				}
 				ImGui::PopID();
