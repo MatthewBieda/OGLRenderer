@@ -356,14 +356,9 @@ int main() {
 	glUniform1i(glGetUniformLocation(debugDepthQuad.ID, "depthMap"), 0);
 
 	//stbi_set_flip_vertically_on_load(true);
-
-	Model checkeredPlane("assets/models/checkeredPlane/checkeredPlane.obj", false, "Checkered Plane");
-	Model backpack("assets/models/backpack/backpack.obj", false, "Backpack");
-	Model human("assets/models/human/human.obj", false, "Human");
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj", false, "lightSource");
-	Model beachScene("assets/models/beachScene/beachScene.obj", false, "beachScene");
 
-	std::vector<glm::vec3> pointLightPositions = { glm::vec3(0.7f, 0.2f, 2.0f) };
+	std::vector<glm::vec3> pointLightPositions = {};
 	const int MAX_POINT_LIGHTS = 10;
 
 	// IMGUI Initialization
@@ -657,12 +652,26 @@ int main() {
 
 					// Remove Button for each model
 					if (ImGui::Button("Remove Model")) {
+						// Find the position of the first non-digit character from the end of the model name
+						size_t lastDigitPos = model.name.find_last_not_of("0123456789");
+
+						// Extract the base name up to that position (if there are any digits at the end)
+						std::string baseName = model.name.substr(0, lastDigitPos + 1); // lastDigitPos + 1 to include the part before digits
+
+						auto it = Model::modelNameCount.find(baseName);
+						if (it != Model::modelNameCount.end()) {
+							it->second--;  // Decrease the count
+							if (it->second == 0) 
+							{
+								Model::modelNameCount.erase(it);  // Optionally, remove the entry if the count reaches 0
+							}
+						}
+
 						// Use the full model name to find and remove the model
 						allModels.erase(std::remove_if(allModels.begin(), allModels.end(),
 							[&model](const Model& m) {
 								return m.name == model.name; // Match by full name
 							}), allModels.end());
-						std::cout << "Removed model: " << model.name << std::endl;
 					}
 
 					ImGui::TreePop();
@@ -692,7 +701,7 @@ int main() {
 		}
 
 		ImGui::SameLine();
-		if (ImGui::Button("Remove Light") && pointLightPositions.size() > 1)
+		if (ImGui::Button("Remove Light"))
 		{
 			pointLightPositions.pop_back();
 		}
