@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <array>
+#include <filesystem>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -24,6 +25,7 @@ void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 void processInput(GLFWwindow* window);
 void processControllerInput();
 void renderQuad();
+void LoadModelFolders();
 
 unsigned int loadCubemap(std::vector<std::string> faces);
 
@@ -92,6 +94,10 @@ bool useFlashlight = false;
 // Timing
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
+
+// Model folder
+std::vector<std::string> modelFolders;
+static int selectedModelIdx = 0;
 
 // Model container
 std::vector<Model> allModels;
@@ -352,17 +358,10 @@ int main() {
 	//stbi_set_flip_vertically_on_load(true);
 
 	Model checkeredPlane("assets/models/checkeredPlane/checkeredPlane.obj", false, "Checkered Plane");
-	checkeredPlane.position = glm::vec3(0.0f, -2.0f, 0.0f);
-
 	Model backpack("assets/models/backpack/backpack.obj", false, "Backpack");
-	backpack.position = glm::vec3{ 4.0f, 0.0f, 0.0f };
-
 	Model human("assets/models/human/human.obj", false, "Human");
-
-	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj");
-
-	Model beachScene("assets/models/beachSceneTextured/beachScene.obj");
-	allModels.push_back(std::move(beachScene));
+	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj", false, "lightSource");
+	Model beachScene("assets/models/beachScene/beachScene.obj", false, "beachScene");
 
 	std::vector<glm::vec3> pointLightPositions = { glm::vec3(0.7f, 0.2f, 2.0f) };
 	const int MAX_POINT_LIGHTS = 10;
@@ -380,8 +379,7 @@ int main() {
 	ShadingMode currentShadingMode = BLINNPHONG;
 
 	bool drawModel = true;
-	bool humanAdded = false;
-	bool backpackAdded = false;
+	LoadModelFolders();
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -621,16 +619,21 @@ int main() {
 		ImGui::Text("Scene Construction");
 		ImGui::Separator();
 
-		if (ImGui::Button("Add Human Model") && !humanAdded)
-		{
-			allModels.push_back(std::move(human));
-			humanAdded = true;
+		if (ImGui::BeginCombo("Select Model", modelFolders[selectedModelIdx].c_str())) {
+			// Iterate through modelFolders and display each item
+			for (int i = 0; i < modelFolders.size(); ++i) {
+				bool isSelected = (selectedModelIdx == i);
+				if (ImGui::Selectable(modelFolders[i].c_str(), isSelected)) {
+					selectedModelIdx = i;  // Update the selection
+				}
+			}
+			ImGui::EndCombo();
 		}
 
-		if (ImGui::Button("Add Backpack Model") && !backpackAdded)
-		{
-			allModels.push_back(std::move(backpack));
-			backpackAdded = true;
+		if (ImGui::Button("Add Model")) {
+			std::string selectedFolder = modelFolders[selectedModelIdx];
+			std::string modelPath = "assets/models/" + selectedFolder + "/" + selectedFolder + ".obj";
+			allModels.emplace_back(Model(modelPath, false, selectedFolder));
 		}
 
 		ImGui::Separator();
@@ -952,4 +955,23 @@ void renderQuad()
 	glBindVertexArray(quadVAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
+}
+
+void LoadModelFolders()
+{
+	modelFolders.clear();
+	for (const auto& entry : std::filesystem::directory_iterator("assets/models"))
+	{
+		if (entry.is_directory())
+		{
+			for (const auto& file : std::filesystem::directory_iterator(entry.path()))
+			{
+				if (file.path().extension() == ".obj") 
+				{
+					modelFolders.push_back(entry.path().filename().string());
+					break;
+				}
+			}
+		}
+	}
 }

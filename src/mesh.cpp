@@ -8,6 +8,15 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, std::vec
 	setupMesh();
 }
 
+Mesh::Mesh(const Mesh& other)
+	: vertices(other.vertices),
+	  indices(other.indices),
+	  textures(other.textures),
+	  VAO(0), VBO(0), EBO(0)
+{
+	setupMesh(); // Create new buffers for this copy
+}
+
 Mesh::Mesh(Mesh&& other) noexcept
 	: vertices(std::move(other.vertices)),
 	  indices(std::move(other.indices)),
@@ -17,6 +26,21 @@ Mesh::Mesh(Mesh&& other) noexcept
 	  EBO(other.EBO)
 {
 	other.VAO = other.VBO = other.EBO = 0;
+}
+
+Mesh& Mesh::operator=(const Mesh& other)
+{
+	if (this != &other)
+	{
+		cleanup();
+
+		vertices = other.vertices;
+		indices = other.indices;
+		textures = other.textures;
+
+		setupMesh();
+	}
+	return *this;
 }
 
 Mesh& Mesh::operator=(Mesh&& other) noexcept

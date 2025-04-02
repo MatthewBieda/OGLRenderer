@@ -13,8 +13,42 @@ Model::Model(const std::string& path, bool gamma, const std::string& modelName)
 	loadModel(path);
 }
 
+static int copyCounter = 0;
+
+Model::Model(const Model& other)
+    : meshes(other.meshes),
+	  directory(other.directory),
+	  textures_loaded(other.textures_loaded),
+	  gammaCorrection(other.gammaCorrection),
+	  hasTextures(other.hasTextures),
+	  position(other.position),
+	  rotation(other.rotation),
+	  scale(other.scale),
+	  visible(other.visible),
+	  name(other.name + std::to_string(++copyCounter))
+{
+	std::cout << "Copying model with name: " << other.name << " to " << name << std::endl;
+}
+
+Model& Model::operator=(const Model& other)
+{
+	if (this != &other) {
+		meshes = other.meshes;
+		directory = other.directory;
+		textures_loaded = other.textures_loaded;
+		gammaCorrection = other.gammaCorrection;
+		hasTextures = other.hasTextures;
+		position = other.position;
+		rotation = other.rotation;
+		scale = other.scale;
+		visible = other.visible;
+		name = other.name;
+	}
+	return *this;
+}
+
 Model::Model(Model&& other) noexcept
-	: meshes(std::move(other.meshes)),
+    : meshes(std::move(other.meshes)),
 	  directory(std::move(other.directory)),
 	  textures_loaded(std::move(other.textures_loaded)),
 	  gammaCorrection(other.gammaCorrection),

@@ -37,9 +37,8 @@ struct Mesh
 	Mesh& operator=(Mesh&& other) noexcept;
 	~Mesh();
 
-	// Delete Copy Constructor and Copy Assignment Operator
-	Mesh(const Mesh&) = delete;
-	Mesh& operator=(const Mesh&) = delete;
+	Mesh(const Mesh& other); // Copy constructor
+	Mesh& operator=(const Mesh& other); // Copy assignment operator
 
 	void Draw(Shader &shader) const;
 	void setupMesh();

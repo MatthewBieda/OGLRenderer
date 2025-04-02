@@ -14,8 +14,8 @@ struct Model
 	Model& operator=(Model&& other) noexcept;
 	~Model() = default; // Use RAII for cleanup
 
-	Model(const Model&) = delete;
-	Model& operator=(const Model&) = delete;
+	Model(const Model& other);
+	Model& operator=(const Model& other);
 
 	// draws the model, and thus all its meshes
 	void Draw(Shader& shader) const;
