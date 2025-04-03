@@ -21,6 +21,13 @@
 
 [![OGLRenderer v1.5](https://img.youtube.com/vi/YpSUtLvGxqE/0.jpg)](https://www.youtube.com/watch?v=YpSUtLvGxqE)
 
+## Version 1.6
+- Support arbitrary model loading/unloading
+- Adopt CMake for a proper build system
+- Move to ImGui Docking to improve user experience
+
+[![OGLRenderer v1.6](https://img.youtube.com/vi/e7xCygjkNcU/0.jpg)](https://www.youtube.com/watch?v=e7xCygjkNcU)
+
 ## Version 2
 - Physically Based Materials and Lighting (Cook-Torrance)
 - Normal / Bump / Parallax Mapping
