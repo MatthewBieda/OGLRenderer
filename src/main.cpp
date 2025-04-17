@@ -30,8 +30,16 @@ void LoadModelFolders();
 unsigned int loadCubemap(std::vector<std::string> faces);
 
 // Screen 
-const int SCR_WIDTH = 1920;
-const int SCR_HEIGHT = 1080;
+int SCR_WIDTH = 1920;
+int SCR_HEIGHT = 1080;
+
+static const std::vector<std::pair<int, int>> resolutions
+{
+	{1280, 720},
+	{1920, 1080},
+	{2560, 1440},
+	{3840, 2160}
+};
 
 // Camera
 Camera camera;
@@ -740,6 +748,22 @@ int main() {
 		}
 
 		ImGui::End();
+
+		if (ImGui::Begin("Change Resolution"))
+		{
+			static int selectedRes = 1;
+			const char* resLabels[] = { "1280x720", "1920x1080", "2560x1440", "3840x2160" };
+
+			if (ImGui::Combo("Resolution", &selectedRes, resLabels, IM_ARRAYSIZE(resLabels)))
+			{
+				int newWidth = resolutions[selectedRes].first;
+				int newHeight = resolutions[selectedRes].second;
+
+				glfwSetWindowSize(window, newWidth, newHeight);
+			}
+		}
+		ImGui::End();
+
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -838,6 +862,8 @@ void processInput(GLFWwindow* window)
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) 
 {
+	SCR_WIDTH = width;
+	SCR_HEIGHT = height;
 	glViewport(0, 0, width, height);
 }
 
@@ -995,3 +1021,28 @@ void LoadModelFolders()
 		}
 	}
 }
+
+struct GameObject
+{
+	glm::vec3 position;
+	glm::vec3 rotation;
+	glm::vec3 scale {1.0f};
+	bool visible = true;
+
+	std::shared_ptr<Model> model; // Shared mesh and materials
+
+	void Draw(Shader& shader)
+	{
+		if (!visible) return;
+
+		glm::mat4 modelMatrix = glm::mat4(1.0f);
+		modelMatrix = glm::translate(modelMatrix, position);
+		modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1, 0, 0));
+		modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.y), glm::vec3(0, 1, 0));
+		modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.z), glm::vec3(0, 0, 1));
+		modelMatrix = glm::scale(modelMatrix, scale);
+
+		glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+		model->Draw(shader);
+	}
+};
