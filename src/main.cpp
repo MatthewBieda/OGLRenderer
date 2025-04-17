@@ -33,13 +33,29 @@ unsigned int loadCubemap(std::vector<std::string> faces);
 int SCR_WIDTH = 1920;
 int SCR_HEIGHT = 1080;
 
-static const std::vector<std::pair<int, int>> resolutions
+static const std::array<std::pair<int, int>, 4> resolutions
 {
-	{1280, 720},
-	{1920, 1080},
-	{2560, 1440},
-	{3840, 2160}
+	{
+		{1280, 720},
+		{1920, 1080},
+		{2560, 1440},
+		{3840, 2160}
+	}
 };
+
+enum class DisplayMode
+{
+	Windowed,
+	Fullscreen,
+	Borderless
+};
+
+DisplayMode currentDisplayMode = DisplayMode::Windowed;
+
+void SetDisplayMode(GLFWwindow* window, DisplayMode mode);
+
+int windowedX = 100, windowedY = 100;
+int windowedWidth = SCR_WIDTH, windowedHeight = SCR_HEIGHT;
 
 // Camera
 Camera camera;
@@ -749,17 +765,40 @@ int main() {
 
 		ImGui::End();
 
-		if (ImGui::Begin("Change Resolution"))
+		if (ImGui::Begin("Display Settings"))
 		{
 			static int selectedRes = 1;
-			const char* resLabels[] = { "1280x720", "1920x1080", "2560x1440", "3840x2160" };
+			static int selectedDisplayMode = 0;
 
+			const char* resLabels[] = { "1280x720", "1920x1080", "2560x1440", "3840x2160" };
+			const char* displayLabels[] = { "Windowed", "Exclusive Fullscreen", "Borderless Fullscreen" };
+
+			// Sync the selected resolution to current window size
+			for (int i = 0; i < resolutions.size(); ++i)
+			{
+				if (SCR_WIDTH == resolutions[i].first && SCR_HEIGHT == resolutions[i].second)
+				{
+					selectedRes = i;
+					break;
+				}
+			}
+
+			bool isWindowed = currentDisplayMode == DisplayMode::Windowed;
+			ImGui::BeginDisabled(!isWindowed);
 			if (ImGui::Combo("Resolution", &selectedRes, resLabels, IM_ARRAYSIZE(resLabels)))
 			{
 				int newWidth = resolutions[selectedRes].first;
 				int newHeight = resolutions[selectedRes].second;
 
 				glfwSetWindowSize(window, newWidth, newHeight);
+				SCR_WIDTH = newWidth;
+				SCR_HEIGHT = newHeight;
+			}
+			ImGui::EndDisabled();
+
+			if (ImGui::Combo("Display Mode", &selectedDisplayMode, displayLabels, IM_ARRAYSIZE(displayLabels)))
+			{
+				SetDisplayMode(window, static_cast<DisplayMode>(selectedDisplayMode));
 			}
 		}
 		ImGui::End();
@@ -865,6 +904,45 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	SCR_WIDTH = width;
 	SCR_HEIGHT = height;
 	glViewport(0, 0, width, height);
+}
+
+void SetDisplayMode(GLFWwindow* window, DisplayMode mode)
+{
+	if (mode == currentDisplayMode)
+	{
+		return;
+	}
+
+	if (currentDisplayMode == DisplayMode::Windowed)
+	{
+		glfwGetWindowPos(window, &windowedX, &windowedY);
+		glfwGetWindowSize(window, &windowedWidth, &windowedHeight);
+	}
+
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* modeInfo = glfwGetVideoMode(monitor);
+
+	switch (mode)
+	{
+	case DisplayMode::Windowed:
+		glfwSetWindowMonitor(window, nullptr, windowedX, windowedY, windowedWidth, windowedHeight, 0);
+		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+		break;
+
+	case DisplayMode::Fullscreen:
+		glfwSetWindowMonitor(window, monitor, 0, 0, modeInfo->width, modeInfo->height, modeInfo->refreshRate);
+		break;
+	
+	case DisplayMode::Borderless:
+		glfwSetWindowMonitor(window, nullptr, 0, 0, modeInfo->width, modeInfo->height, 0);
+		glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+		framebuffer_size_callback(window, modeInfo->width, modeInfo->height);
+
+		break;
+	}
+
+
+	currentDisplayMode = mode;
 }
 
 void mouse_callback(GLFWwindow* window, double xPosIn, double yPosIn) 
