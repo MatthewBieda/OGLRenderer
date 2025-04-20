@@ -22,9 +22,6 @@ Model::Model(const Model& other)
 	  textures_loaded(other.textures_loaded),
 	  gammaCorrection(other.gammaCorrection),
 	  hasTextures(other.hasTextures),
-	  position(other.position),
-	  rotation(other.rotation),
-	  scale(other.scale),
 	  visible(other.visible),
 	  name(other.name + std::to_string(++modelNameCount[other.name]))
 {
@@ -39,9 +36,6 @@ Model& Model::operator=(const Model& other)
 		textures_loaded = other.textures_loaded;
 		gammaCorrection = other.gammaCorrection;
 		hasTextures = other.hasTextures;
-		position = other.position;
-		rotation = other.rotation;
-		scale = other.scale;
 		visible = other.visible;
 		name = other.name + std::to_string(++modelNameCount[other.name]);
 	}
@@ -54,9 +48,6 @@ Model::Model(Model&& other) noexcept
 	  textures_loaded(std::move(other.textures_loaded)),
 	  gammaCorrection(other.gammaCorrection),
 	  hasTextures(other.hasTextures),
-	  position(other.position),
-	  rotation(other.rotation),
-	  scale(other.scale),
 	  visible(other.visible),
 	  name(std::move(other.name))
 {
@@ -70,9 +61,6 @@ Model& Model::operator=(Model&& other) noexcept
 		textures_loaded = std::move(other.textures_loaded);
 		gammaCorrection = other.gammaCorrection;
 		hasTextures = other.hasTextures;
-		position = other.position;
-		rotation = other.rotation;
-		scale = other.scale;
 		visible = other.visible;
 		name = std::move(other.name);
 	}
@@ -86,7 +74,7 @@ void Model::Draw(Shader& shader) const
 
 	for (const auto& mesh : meshes)
 	{
-		mesh.Draw(shader);
+		mesh.DrawInstanced(shader, instanceTransforms.size());
 	}
 }
 
@@ -115,6 +103,16 @@ void Model::loadModel(std::string_view path)
 
 	// Process Assimp's root node recursively
 	processNode(scene->mRootNode, scene);
+
+	// Create and upload instance VBO
+	glGenBuffers(1, &instanceVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+	glBufferData(GL_ARRAY_BUFFER, instanceTransforms.size() * sizeof(glm::mat4), instanceTransforms.data(), GL_STATIC_DRAW);
+
+	for (Mesh& mesh : meshes)
+	{
+		mesh.setupMesh(instanceVBO);
+	}
 }
 
 void Model::processNode(aiNode* node, const aiScene *scene)

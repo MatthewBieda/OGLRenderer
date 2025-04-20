@@ -27,11 +27,33 @@ void processControllerInput();
 void renderQuad();
 void LoadModelFolders();
 
+class GameObject {
+public:
+	std::shared_ptr<Model> model;  // Using shared_ptr for better memory management
+	glm::vec3 position = { 0, 0, 0 };
+	glm::vec3 rotation = { 0, 0, 0 };
+	float scale = 1.0f;
+	bool visible = true;
+	std::string name;
+
+	GameObject(std::shared_ptr<Model> model, const std::string& name) : model(model), name(name) {}
+
+	glm::mat4 getTransformMatrix() const {
+		glm::mat4 transform(1.0f);
+		transform = glm::translate(transform, position);
+		transform = glm::rotate(transform, glm::radians(rotation.x), glm::vec3(1, 0, 0));
+		transform = glm::rotate(transform, glm::radians(rotation.y), glm::vec3(0, 1, 0));
+		transform = glm::rotate(transform, glm::radians(rotation.z), glm::vec3(0, 0, 1));
+		transform = glm::scale(transform, glm::vec3(scale));
+		return transform;
+	}
+};
+
 unsigned int loadCubemap(std::vector<std::string> faces);
 
 // Screen 
-int SCR_WIDTH = 1920;
-int SCR_HEIGHT = 1080;
+int SCR_WIDTH = 2560;
+int SCR_HEIGHT = 1440;
 
 static const std::array<std::pair<int, int>, 4> resolutions
 {
@@ -123,8 +145,9 @@ float lastFrame = 0.0f; // Time of last frame
 std::vector<std::string> modelFolders;
 static int selectedModelIdx = 0;
 
-// Model container
-std::vector<Model> allModels;
+// Game object container
+std::vector<GameObject> gameObjects;
+std::unordered_map<std::string, std::shared_ptr<Model>> modelCache;
 
 GLenum glCheckError_(const char* file, int line)
 {
@@ -483,20 +506,30 @@ int main() {
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
 
-		// render scene
-		for (const Model& currModel : allModels)
-		{
-			if (currModel.visible) {
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, currModel.position);
-				model = glm::rotate(model, glm::radians(currModel.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-				model = glm::rotate(model, glm::radians(currModel.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-				model = glm::rotate(model, glm::radians(currModel.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-				model = glm::scale(model, glm::vec3(currModel.scale));
+		// Group transforms by model for shadow pass
+		std::unordered_map<std::shared_ptr<Model>, std::vector<glm::mat4>> shadowInstancedModels;
 
-				glUniformMatrix4fv(glGetUniformLocation(shadowMap.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-				currModel.Draw(shadowMap);
+		// Group transforms by model
+		for (const auto& obj : gameObjects) {
+			if (obj.visible) {
+				shadowInstancedModels[obj.model].push_back(obj.getTransformMatrix());
 			}
+		}
+
+		// Render each model with all its instances for shadow mapping
+		for (auto& [modelPtr, transforms] : shadowInstancedModels) {
+			// Skip if no visible instances
+			if (transforms.empty()) continue;
+
+			// Update model's instance buffer
+			glBindBuffer(GL_ARRAY_BUFFER, modelPtr->instanceVBO);
+			glBufferData(GL_ARRAY_BUFFER,
+				transforms.size() * sizeof(glm::mat4),
+				transforms.data(),
+				GL_DYNAMIC_DRAW);
+
+			// Draw the model with instancing for shadows
+			modelPtr->Draw(shadowMap);
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -582,20 +615,40 @@ int main() {
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 
-		// Render all models
-		for (const Model& currModel : allModels)
-		{
-			if (currModel.visible) {
-				glm::mat4 model = glm::mat4(1.0f);
-				model = glm::translate(model, currModel.position);
-				model = glm::rotate(model, glm::radians(currModel.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-				model = glm::rotate(model, glm::radians(currModel.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-				model = glm::rotate(model, glm::radians(currModel.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-				model = glm::scale(model, glm::vec3(currModel.scale));
+		std::unordered_map<std::shared_ptr<Model>, std::vector<glm::mat4>> instancedModels;
 
-				glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-				currModel.Draw(*activeShader);
+		// Group transforms by model
+		for (const auto& obj : gameObjects) {
+			if (obj.visible) {
+				if (obj.model) {
+					instancedModels[obj.model].push_back(obj.getTransformMatrix());
+				}
+				else {
+					std::cout << "Warning: GameObject " << obj.name << " has null model pointer!" << std::endl;
+				}
 			}
+		}
+
+		// Render each model with all its instances
+		for (auto& [modelPtr, transforms] : instancedModels) {
+			// Skip if no visible instances or null model
+			if (!modelPtr || transforms.empty()) {
+				std::cout << "Skipping model - null or no transforms" << std::endl;
+				continue;
+			}
+
+			// Copy the transforms to the model's member variable
+			modelPtr->instanceTransforms = transforms;
+
+			// Update model's instance buffer
+			glBindBuffer(GL_ARRAY_BUFFER, modelPtr->instanceVBO);
+			glBufferData(GL_ARRAY_BUFFER,
+				transforms.size() * sizeof(glm::mat4),
+				transforms.data(),
+				GL_DYNAMIC_DRAW);
+
+			// No need to set model matrix uniform when instancing
+			modelPtr->Draw(*activeShader);
 		}
 
 		lightSource.use();
@@ -649,60 +702,83 @@ int main() {
 			ImGui::EndCombo();
 		}
 
+		static int instanceCount = 10;
+
+		ImGui::InputInt("Instances to Add", &instanceCount);
+		if (instanceCount < 1) 
+		{
+			instanceCount = 1;
+		}
+
+		// Update your "Add Model" button handler
 		if (ImGui::Button("Add Model")) {
 			std::string selectedFolder = modelFolders[selectedModelIdx];
 			std::string modelPath = "assets/models/" + selectedFolder + "/" + selectedFolder + ".obj";
-			allModels.emplace_back(Model(modelPath, false, selectedFolder));
+
+			// Check if we already have this model in cache
+			std::shared_ptr<Model> modelPtr;
+			if (modelCache.find(selectedFolder) == modelCache.end()) {
+				// Create new model and add to cache
+				modelPtr = std::make_shared<Model>(modelPath, false, selectedFolder);
+				modelCache[selectedFolder] = modelPtr;
+				std::cout << "Created new model: " << selectedFolder << std::endl;
+			}
+			else {
+				// Use existing model from cache
+				modelPtr = modelCache[selectedFolder];
+				std::cout << "Using cached model: " << selectedFolder << std::endl;
+			}
+
+			// Add multiple GameObjects
+			int gridSize = static_cast<int>(std::sqrt(instanceCount)); // e.g. 10 for 100 instances
+
+			for (int i = 0; i < instanceCount; ++i) {
+				std::string objName = selectedFolder + "_" + std::to_string(gameObjects.size());
+
+				GameObject obj(modelPtr, objName);
+
+				int row = i / gridSize;
+				int col = i % gridSize;
+
+				float spacing = 2.0f; // Adjust spacing between objects
+
+				obj.position = glm::vec3(col * spacing, 0.0f, row * spacing);
+
+				gameObjects.push_back(std::move(obj));
+			}
+			std::cout << "Added " << instanceCount << " instances of " << selectedFolder << std::endl;
+
 		}
 
 		ImGui::Separator();
 		ImGui::Text("Modify Model Properties");
 
-		if (ImGui::CollapsingHeader("Models"))
+		if (ImGui::CollapsingHeader("GameObjects"))
 		{
-			for (int i = 0; i < allModels.size(); ++i)
+			for (int i = 0; i < gameObjects.size(); ++i)
 			{
-				Model& model = allModels[i];
-
+				GameObject& obj = gameObjects[i];
 				ImGui::PushID(i);
-				if (ImGui::TreeNode(model.name.c_str()))
+				if (ImGui::TreeNode(obj.name.c_str()))
 				{
-					ImGui::Checkbox("Visible", &model.visible);
-					ImGui::SliderFloat("Scale", &model.scale, 0.01f, 2.0f);
-					ImGui::DragFloat3("Model Position", glm::value_ptr(model.position), 0.1f);
-					ImGui::SliderFloat("Model Rotation X", &model.rotation.x, 0.0f, 360.0f);
-					ImGui::SliderFloat("Model Rotation Y", &model.rotation.y, 0.0f, 360.0f);
-					ImGui::SliderFloat("Model Rotation Z", &model.rotation.z, 0.0f, 360.0f);
+					ImGui::Checkbox("Visible", &obj.visible);
+					ImGui::SliderFloat("Scale", &obj.scale, 0.01f, 2.0f);
+					ImGui::DragFloat3("Position", glm::value_ptr(obj.position), 0.1f);
+					ImGui::SliderFloat("Rotation X", &obj.rotation.x, 0.0f, 360.0f);
+					ImGui::SliderFloat("Rotation Y", &obj.rotation.y, 0.0f, 360.0f);
+					ImGui::SliderFloat("Rotation Z", &obj.rotation.z, 0.0f, 360.0f);
 
-					// Remove Button for each model
-					if (ImGui::Button("Remove Model")) {
-						// Find the position of the first non-digit character from the end of the model name
-						size_t lastDigitPos = model.name.find_last_not_of("0123456789");
-
-						// Extract the base name up to that position (if there are any digits at the end)
-						std::string baseName = model.name.substr(0, lastDigitPos + 1); // lastDigitPos + 1 to include the part before digits
-
-						auto it = Model::modelNameCount.find(baseName);
-						if (it != Model::modelNameCount.end()) {
-							it->second--;  // Decrease the count
-							if (it->second == 0) 
-							{
-								Model::modelNameCount.erase(it);  // Optionally, remove the entry if the count reaches 0
-							}
-						}
-
-						// Use the full model name to find and remove the model
-						allModels.erase(std::remove_if(allModels.begin(), allModels.end(),
-							[&model](const Model& m) {
-								return m.name == model.name; // Match by full name
-							}), allModels.end());
+					// Remove Button for each GameObject
+					if (ImGui::Button("Remove GameObject")) {
+						gameObjects.erase(gameObjects.begin() + i);
+						i--; // Adjust index since we removed an element
 					}
-
 					ImGui::TreePop();
 				}
 				ImGui::PopID();
 			}
 		}
+
 
 		ImGui::Separator();
 		ImGui::Text("Specular Exponent");
@@ -1099,28 +1175,3 @@ void LoadModelFolders()
 		}
 	}
 }
-
-struct GameObject
-{
-	glm::vec3 position;
-	glm::vec3 rotation;
-	glm::vec3 scale {1.0f};
-	bool visible = true;
-
-	std::shared_ptr<Model> model; // Shared mesh and materials
-
-	void Draw(Shader& shader)
-	{
-		if (!visible) return;
-
-		glm::mat4 modelMatrix = glm::mat4(1.0f);
-		modelMatrix = glm::translate(modelMatrix, position);
-		modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1, 0, 0));
-		modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.y), glm::vec3(0, 1, 0));
-		modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.z), glm::vec3(0, 0, 1));
-		modelMatrix = glm::scale(modelMatrix, scale);
-
-		glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
-		model->Draw(shader);
-	}
-};

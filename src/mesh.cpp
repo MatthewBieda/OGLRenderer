@@ -2,10 +2,11 @@
 
 #include "mesh.hpp"
 
+#include <iostream>
+
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, std::vector<Texture> textures)
 	: vertices(std::move(vertices)), indices(std::move(indices)), textures(std::move(textures))
 {
-	setupMesh();
 }
 
 Mesh::Mesh(const Mesh& other)
@@ -14,7 +15,6 @@ Mesh::Mesh(const Mesh& other)
 	  textures(other.textures),
 	  VAO(0), VBO(0), EBO(0)
 {
-	setupMesh(); // Create new buffers for this copy
 }
 
 Mesh::Mesh(Mesh&& other) noexcept
@@ -37,8 +37,6 @@ Mesh& Mesh::operator=(const Mesh& other)
 		vertices = other.vertices;
 		indices = other.indices;
 		textures = other.textures;
-
-		setupMesh();
 	}
 	return *this;
 }
@@ -64,33 +62,20 @@ Mesh::~Mesh()
 	cleanup();
 }
 
-void Mesh::Draw(Shader& shader) const
+void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 {
-	uint32_t diffuseNr = 1;
-	uint32_t specularNr = 1;
-	uint32_t normalNr = 1;
-	uint32_t heightNr = 1;
+	// === Texture Binding ===
+	uint32_t diffuseNr = 1, specularNr = 1, normalNr = 1, heightNr = 1;
 
-	for (size_t i = 0; i < textures.size(); ++i) 
-	{
-		glActiveTexture(GL_TEXTURE0 + i); // activate correct texture unit
+	for (size_t i = 0; i < textures.size(); ++i) {
+		glActiveTexture(GL_TEXTURE0 + i);
 
 		std::string uniformName;
-		if (textures[i].type == TextureType::DIFFUSE) 
-		{
-			uniformName = "material.texture_diffuse" + std::to_string(diffuseNr++);
-		}
-		else if (textures[i].type == TextureType::SPECULAR) 
-		{
-			uniformName = "material.texture_specular" + std::to_string(specularNr++);
-		}
-		else if (textures[i].type == TextureType::NORMAL)
-		{
-			uniformName = "material.texture_normal" + std::to_string(normalNr++);
-		}
-		else if (textures[i].type == TextureType::HEIGHT)
-		{
-			uniformName = "material.texture_height" + std::to_string(heightNr++);
+		switch (textures[i].type) {
+			case TextureType::DIFFUSE:  uniformName = "material.texture_diffuse" + std::to_string(diffuseNr++); break;
+			case TextureType::SPECULAR: uniformName = "material.texture_specular" + std::to_string(specularNr++); break;
+			case TextureType::NORMAL:   uniformName = "material.texture_normal" + std::to_string(normalNr++); break;
+			case TextureType::HEIGHT:   uniformName = "material.texture_height" + std::to_string(heightNr++); break;
 		}
 
 		glUniform1i(glGetUniformLocation(shader.ID, uniformName.c_str()), i);
@@ -99,13 +84,13 @@ void Mesh::Draw(Shader& shader) const
 
 	// draw mesh
 	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
 	glBindVertexArray(0);
 
 	glActiveTexture(GL_TEXTURE0);
 }
 
-void Mesh::setupMesh()
+void Mesh::setupMesh(GLuint instanceVBO)
 {
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -134,6 +119,16 @@ void Mesh::setupMesh()
 	// vertex bitangent
 	glEnableVertexAttribArray(4);
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+
+	// --- Instance Matrix Attributes (mat4 = 4 vec4s) ---
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+
+	for (int i = 0; i < 4; ++i)
+	{
+		glEnableVertexAttribArray(5 + i); // <--- start from 5, since 0–4 are taken
+		glVertexAttribPointer(5 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4) * i));
+		glVertexAttribDivisor(5 + i, 1); // advance per-instance
+	}
 
 	glBindVertexArray(0);
 }

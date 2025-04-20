@@ -25,20 +25,19 @@ struct Model
 	void processNode(aiNode* node, const aiScene* scene);
 	Mesh processMesh(aiMesh* mesh, const aiScene* scene);
 	std::vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, TextureType typeName);
+	void updateInstanceBuffer(const std::vector<glm::mat4>& transforms);
 
-	// Textures and meshes loaded from the model
+	// Global modal properties
+	std::string name;
 	std::vector<Texture> textures_loaded;
 	std::vector<Mesh> meshes;
 	std::string directory;
-
-	// Model Properties
 	bool gammaCorrection = false;
 	bool hasTextures = false;
-	glm::vec3 position = glm::vec3(0.0f);
-	glm::vec3 rotation = glm::vec3(0.0f); // x,y,z rotation in degrees
-	float scale = 1.0f;
 	bool visible = true;
-	std::string name;
+
+	GLuint instanceVBO = 0;
+	std::vector<glm::mat4> instanceTransforms;
 
 	// Static member initialization for model name counting
 	static std::unordered_map<std::string, int> modelNameCount;
