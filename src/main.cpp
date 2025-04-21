@@ -507,17 +507,17 @@ int main() {
 		glClear(GL_DEPTH_BUFFER_BIT);
 
 		// Group transforms by model for shadow pass
-		std::unordered_map<std::shared_ptr<Model>, std::vector<glm::mat4>> shadowInstancedModels;
+		std::unordered_map<std::shared_ptr<Model>, std::vector<glm::mat4>> batchedInstanceData;
 
 		// Group transforms by model
 		for (const auto& obj : gameObjects) {
 			if (obj.visible) {
-				shadowInstancedModels[obj.model].push_back(obj.getTransformMatrix());
+				batchedInstanceData[obj.model].push_back(obj.getTransformMatrix());
 			}
 		}
 
 		// Render each model with all its instances for shadow mapping
-		for (auto& [modelPtr, transforms] : shadowInstancedModels) {
+		for (auto& [modelPtr, transforms] : batchedInstanceData) {
 			// Skip if no visible instances
 			if (transforms.empty()) continue;
 
@@ -615,34 +615,13 @@ int main() {
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 
-		std::unordered_map<std::shared_ptr<Model>, std::vector<glm::mat4>> instancedModels;
-
-		// Group transforms by model
-		for (const auto& obj : gameObjects) {
-			if (obj.visible) {
-				if (obj.model) {
-					instancedModels[obj.model].push_back(obj.getTransformMatrix());
-				}
-				else {
-					std::cout << "Warning: GameObject " << obj.name << " has null model pointer!" << std::endl;
-				}
-			}
-		}
-
 		// Render each model with all its instances
-		for (auto& [modelPtr, transforms] : instancedModels) {
+		for (auto& [modelPtr, transforms] : batchedInstanceData) {
 			// Skip if no visible instances or null model
 			if (!modelPtr || transforms.empty()) {
 				std::cout << "Skipping model - null or no transforms" << std::endl;
 				continue;
 			}
-
-			// Update model's instance buffer
-			glBindBuffer(GL_ARRAY_BUFFER, modelPtr->instanceVBO);
-			glBufferData(GL_ARRAY_BUFFER,
-				transforms.size() * sizeof(glm::mat4),
-				transforms.data(),
-				GL_DYNAMIC_DRAW);
 
 			// No need to set model matrix uniform when instancing
 			modelPtr->Draw(*activeShader, transforms.size());
