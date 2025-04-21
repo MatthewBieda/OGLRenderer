@@ -67,14 +67,14 @@ Model& Model::operator=(Model&& other) noexcept
 	return *this;
 }
 
-void Model::Draw(Shader& shader) const
+void Model::Draw(Shader& shader, size_t instanceCount) const
 {
 	// Set uniform before drawing meshes
 	glUniform1i(glGetUniformLocation(shader.ID, "hasTextures"), hasTextures);
 
 	for (const auto& mesh : meshes)
 	{
-		mesh.DrawInstanced(shader, instanceTransforms.size());
+		mesh.DrawInstanced(shader, instanceCount);
 	}
 }
 
@@ -107,7 +107,8 @@ void Model::loadModel(std::string_view path)
 	// Create and upload instance VBO
 	glGenBuffers(1, &instanceVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-	glBufferData(GL_ARRAY_BUFFER, instanceTransforms.size() * sizeof(glm::mat4), instanceTransforms.data(), GL_STATIC_DRAW);
+	glm::mat4 identity(1.0f);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::mat4), &identity, GL_DYNAMIC_DRAW);
 
 	for (Mesh& mesh : meshes)
 	{

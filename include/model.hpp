@@ -19,13 +19,12 @@ struct Model
 	~Model() = default; // Use RAII for cleanup
 
 	// draws the model, and thus all its meshes
-	void Draw(Shader& shader) const;
+	void Draw(Shader& shader, size_t instanceCount) const;
 
 	void loadModel(std::string_view path);
 	void processNode(aiNode* node, const aiScene* scene);
 	Mesh processMesh(aiMesh* mesh, const aiScene* scene);
 	std::vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, TextureType typeName);
-	void updateInstanceBuffer(const std::vector<glm::mat4>& transforms);
 
 	// Global modal properties
 	std::string name;
@@ -37,7 +36,6 @@ struct Model
 	bool visible = true;
 
 	GLuint instanceVBO = 0;
-	std::vector<glm::mat4> instanceTransforms;
 
 	// Static member initialization for model name counting
 	static std::unordered_map<std::string, int> modelNameCount;

@@ -529,7 +529,7 @@ int main() {
 				GL_DYNAMIC_DRAW);
 
 			// Draw the model with instancing for shadows
-			modelPtr->Draw(shadowMap);
+			modelPtr->Draw(shadowMap, transforms.size());
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -637,9 +637,6 @@ int main() {
 				continue;
 			}
 
-			// Copy the transforms to the model's member variable
-			modelPtr->instanceTransforms = transforms;
-
 			// Update model's instance buffer
 			glBindBuffer(GL_ARRAY_BUFFER, modelPtr->instanceVBO);
 			glBufferData(GL_ARRAY_BUFFER,
@@ -648,7 +645,7 @@ int main() {
 				GL_DYNAMIC_DRAW);
 
 			// No need to set model matrix uniform when instancing
-			modelPtr->Draw(*activeShader);
+			modelPtr->Draw(*activeShader, transforms.size());
 		}
 
 		lightSource.use();
@@ -662,7 +659,7 @@ int main() {
 			model = glm::scale(model, glm::vec3(0.2f));
 			glUniformMatrix4fv(glGetUniformLocation(lightSource.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-			lightSourceSphere.Draw(lightSource);
+			lightSourceSphere.Draw(lightSource, 1);
 		}
 
 		// Draw skybox last in the scene
