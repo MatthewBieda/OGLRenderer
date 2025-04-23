@@ -1153,3 +1153,13 @@ void LoadModelFolders()
 		}
 	}
 }
+
+//TODO
+//Move constant light direction transformations to the vertex shader:
+
+//Transform directional light direction once
+//Transform spotlight direction once
+//Pass as varyings to the fragment shader
+
+
+//Consider transforming point light positions in the vertex shader too (if you have only a few points lights)

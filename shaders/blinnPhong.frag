@@ -4,6 +4,7 @@ out vec4 FragColor;
 struct Material {
     sampler2D texture_diffuse1;
     sampler2D texture_specular1;
+    sampler2D texture_normal1;
     float shininess;
 }; 
 
@@ -42,19 +43,22 @@ struct SpotLight {
     vec3 specular;       
 };
 
-uniform int NR_POINT_LIGHTS;
-uniform sampler2D shadowMap;
+#define MAX_POINT_LIGHTS 10
 
-in vec3 FragPos;
-in vec3 Normal;
 in vec2 TexCoords;
+in vec3 TangentViewPos;
+in vec3 TangentFragPos;
+in vec3 WorldNormal;
 in vec4 FragPosLightSpace;
+in mat3 TBN_inverse;
 
 uniform vec3 viewPos;
 uniform DirLight dirLight;
-uniform PointLight pointLights[10]; // size of max point lights
+uniform PointLight pointLights[MAX_POINT_LIGHTS];
+uniform int NR_POINT_LIGHTS;
 uniform SpotLight spotLight;
 uniform Material material;
+uniform sampler2D shadowMap;
 
 uniform bool hasTextures;
 uniform bool enableSpotLight;
@@ -72,8 +76,20 @@ float shadowCalculation(vec4 FragPosLightSpace);
 void main()
 {    
     // properties
-    vec3 norm = normalize(Normal);
-    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 norm;
+    if (hasTextures)
+    {
+        // Sample normal map and transform to [-1, 1] range
+        vec3 normalMap = texture(material.texture_normal1, TexCoords).rgb;
+        normalMap = normalMap * 2.0 - 1.0;
+        norm = normalize(normalMap);
+    } else {
+        // Transform World normal to Tangent space if there is no normal map
+        norm = normalize(TBN_inverse * WorldNormal);
+    }
+
+    // Calculate the view direction in Tangent space
+    vec3 viewDir = normalize(TangentViewPos - TangentFragPos);
     
     // == =====================================================
     // Our lighting is set up in 3 phases: directional, point lights and an optional flashlight
@@ -82,15 +98,20 @@ void main()
     // this fragment's final color.
     // == =====================================================
     // phase 1: directional lighting
+    // The dirLight.direction needs to be transformed to tangent space
     vec3 result = CalcDirLight(dirLight, norm, viewDir);
+
     // phase 2: point lights
     for (int i = 0; i < NR_POINT_LIGHTS; i++) 
     {
-        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
+        // Trasform point light position to tangent space in the function
+        result += CalcPointLight(pointLights[i], norm, TangentFragPos, viewDir);    
     }
+
     // phase 3: spot light
     if (enableSpotLight) {
-        result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
+        // Transform spot light position to tangent space in the function
+        result += CalcSpotLight(spotLight, norm, TangentFragPos, viewDir);    
     }
 
     FragColor = vec4(result, 1.0);
@@ -99,11 +120,11 @@ void main()
 // calculates the color when using a directional light.
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 {
-    vec3 lightDir = normalize(-light.direction);
+    vec3 TangentLightDir = normalize(TBN_inverse * (-light.direction));
     // diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
+    float diff = max(dot(normal, TangentLightDir), 0.0);
     // specular shading
-    vec3 halfwayDir = normalize(lightDir + viewDir);  
+    vec3 halfwayDir = normalize(TangentLightDir + viewDir);  
     float spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess * 4);
     // combine results
     vec3 ambient = light.ambient * getDiffuseColor();
@@ -111,7 +132,8 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     vec3 specular = light.specular * spec * getSpecularColor();
 
     // calculate shadows
-    float shadow = shadowCalculation(FragPosLightSpace);    
+    float shadow = shadowCalculation(FragPosLightSpace);
+    
     // apply shadow to diffuse and specular
     diffuse *= (1.0 - shadow);
     specular *= (1.0 - shadow);
@@ -120,16 +142,19 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 }
 
 // calculates the color when using a point light.
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 tangentFragPos, vec3 viewDir)
 {
-    vec3 lightDir = normalize(light.position - fragPos);
+    // Transform light position to tangent space
+    vec3 tangentLightPos = TBN_inverse * light.position;
+    vec3 lightDir = normalize(tangentLightPos - tangentFragPos);
+
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
     // specular shading
     vec3 halfwayDir = normalize(lightDir + viewDir);  
     float spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess * 4);
     // attenuation
-    float distance = length(light.position - fragPos);
+    float distance = length(tangentLightPos - tangentFragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
     // combine results
     vec3 ambient = light.ambient * getDiffuseColor();
@@ -139,23 +164,29 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
+
     return (ambient + diffuse + specular);
 }
 
 // calculates the color when using a spot light.
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 tangentFragPos, vec3 viewDir)
 {
-    vec3 lightDir = normalize(light.position - fragPos);
+    // Transform spot light position and direction to tangent space
+    vec3 tangentLightPos = TBN_inverse * light.position;
+    vec3 tangentLightDir = normalize(TBN_inverse * (-light.direction));
+
+    vec3 lightDir = normalize(tangentLightPos - tangentFragPos);
+
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     // attenuation
-    float distance = length(light.position - fragPos);
+    float distance = length(tangentLightPos - tangentFragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
     // spotlight intensity
-    float theta = dot(lightDir, normalize(-light.direction)); 
+    float theta = dot(lightDir, normalize(-tangentLightDir)); 
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
     // combine results
@@ -166,6 +197,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     ambient *= attenuation * intensity;
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;
+
     return (ambient + diffuse + specular);
 }
 
@@ -189,11 +221,9 @@ float shadowCalculation(vec4 FragPosLightSpace)
     // Get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
     // calculate bias (based on depth map resolution and slope)
-    vec3 normal = normalize(Normal);
-    vec3 lightDir = normalize(-dirLight.direction);
-    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-    // check whether current frag pos is in shadow
-    // float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+    vec3 lightDir = normalize(TBN_inverse * (-dirLight.direction));
+    float bias = max(0.05 * (1.0 - dot(normalize(WorldNormal), normalize(-dirLight.direction))), 0.005);
+
     // PCF
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
