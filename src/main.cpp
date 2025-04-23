@@ -510,14 +510,16 @@ int main() {
 		std::unordered_map<std::shared_ptr<Model>, std::vector<glm::mat4>> batchedInstanceData;
 
 		// Group transforms by model
-		for (const auto& obj : gameObjects) {
+		for (const auto& obj : gameObjects) 
+		{
 			if (obj.visible) {
 				batchedInstanceData[obj.model].push_back(obj.getTransformMatrix());
 			}
 		}
 
 		// Render each model with all its instances for shadow mapping
-		for (auto& [modelPtr, transforms] : batchedInstanceData) {
+		for (auto& [modelPtr, transforms] : batchedInstanceData) 
+		{
 			// Skip if no visible instances
 			if (transforms.empty()) continue;
 
@@ -616,7 +618,7 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 
 		// Render each model with all its instances
-		for (auto& [modelPtr, transforms] : batchedInstanceData) {
+		for (auto& [modelPtr, transforms] : batchedInstanceData) { 
 			// Skip if no visible instances or null model
 			if (!modelPtr || transforms.empty()) {
 				std::cout << "Skipping model - null or no transforms" << std::endl;

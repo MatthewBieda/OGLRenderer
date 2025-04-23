@@ -84,10 +84,15 @@ void Model::loadModel(std::string_view path)
 	Assimp::Importer importer;
 	const aiScene* scene = importer.ReadFile(
 		std::string(path), 
-		aiProcess_Triangulate | 
-		aiProcess_GenSmoothNormals | 
-		aiProcess_FlipUVs | 
-		aiProcess_CalcTangentSpace
+		aiProcess_Triangulate |
+		aiProcess_GenSmoothNormals |
+		aiProcess_FlipUVs |
+		aiProcess_CalcTangentSpace |
+		aiProcess_JoinIdenticalVertices |
+		aiProcess_ImproveCacheLocality |
+		aiProcess_SortByPType |
+		aiProcess_RemoveRedundantMaterials |
+		aiProcess_OptimizeMeshes
 	);
 
 	// Check for errors
