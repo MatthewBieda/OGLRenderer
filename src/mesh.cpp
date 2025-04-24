@@ -64,22 +64,41 @@ Mesh::~Mesh()
 
 void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 {
-	// === Texture Binding ===
-	uint32_t diffuseNr = 1, specularNr = 1, normalNr = 1, heightNr = 1;
+	// Define fixed texture units for each type
+	const uint32_t DIFFUSE_UNIT = 0;
+	const uint32_t SPECULAR_UNIT = 1;
+	const uint32_t NORMAL_UNIT = 2;
 
-	for (size_t i = 0; i < textures.size(); ++i) {
-		glActiveTexture(GL_TEXTURE0 + i);
+	// Ensure uniform sampler bindings are correct
+	shader.setInt("material.texture_diffuse1", DIFFUSE_UNIT);
+	shader.setInt("material.texture_specular1", SPECULAR_UNIT);
+	shader.setInt("material.texture_normal1", NORMAL_UNIT);
 
-		std::string uniformName;
-		switch (textures[i].type) {
-			case TextureType::DIFFUSE:  uniformName = "material.texture_diffuse" + std::to_string(diffuseNr++); break;
-			case TextureType::SPECULAR: uniformName = "material.texture_specular" + std::to_string(specularNr++); break;
-			case TextureType::NORMAL:   uniformName = "material.texture_normal" + std::to_string(normalNr++); break;
-			case TextureType::HEIGHT:   uniformName = "material.texture_height" + std::to_string(heightNr++); break;
+	// Bind textures to their designated units by type
+	bool hasDiffuse = false;
+	bool hasSpecular = false;
+	bool hasNormal = false;
+
+	for (const Texture& texture : textures)
+	{
+		switch (texture.type)
+		{
+		case TextureType::DIFFUSE:
+			glActiveTexture(GL_TEXTURE0 + DIFFUSE_UNIT);
+			glBindTexture(GL_TEXTURE_2D, texture.id);
+			hasDiffuse = true;
+			break;
+		case TextureType::SPECULAR:
+			glActiveTexture(GL_TEXTURE0 + SPECULAR_UNIT);
+			glBindTexture(GL_TEXTURE_2D, texture.id);
+			hasSpecular = true;
+			break;
+		case TextureType::NORMAL:
+			glActiveTexture(GL_TEXTURE0 + NORMAL_UNIT);
+			glBindTexture(GL_TEXTURE_2D, texture.id);
+			hasNormal = true;
+			break;
 		}
-
-		glUniform1i(glGetUniformLocation(shader.ID, uniformName.c_str()), i);
-		glBindTexture(GL_TEXTURE_2D, textures[i].id);
 	}
 
 	// draw mesh

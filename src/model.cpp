@@ -255,6 +255,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType 
 	{
 		aiString str;
 		mat->GetTexture(type, i, &str);
+		std::cout << "Loading texture type" << (int)type << ": " << str.C_Str() << std::endl;
 
 		// Check if the texture was already loaded, if so continue to next iteration
 		bool skip = false;

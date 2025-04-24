@@ -82,6 +82,10 @@ void main()
         // Sample normal map and transform to [-1, 1] range
         vec3 normalMap = texture(material.texture_normal1, TexCoords).rgb;
         normalMap = normalMap * 2.0 - 1.0;
+
+        // Invert Y component to convert from DirectX to OpenGL format
+        normalMap.y = -normalMap.y;
+
         norm = normalize(normalMap);
     } else {
         // Transform World normal to Tangent space if there is no normal map

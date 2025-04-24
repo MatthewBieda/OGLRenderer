@@ -680,7 +680,7 @@ int main() {
 			ImGui::EndCombo();
 		}
 
-		static int instanceCount = 10;
+		static int instanceCount = 1;
 
 		ImGui::InputInt("Instances to Add", &instanceCount);
 		if (instanceCount < 1) 
