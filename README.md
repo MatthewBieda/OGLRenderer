@@ -11,7 +11,7 @@
 - Wireframe Mode
 - All parameters dynamically adjustable in the application
 
-[![OGLRenderer v1.5](https://img.youtube.com/vi/pXJLGCEeVWc/0.jpg)](https://www.youtube.com/watch?v=pXJLGCEeVWc)
+[![OGLRenderer v1.0](https://img.youtube.com/vi/pXJLGCEeVWc/0.jpg)](https://www.youtube.com/watch?v=pXJLGCEeVWc)
 
 ## Version 1.5
 - Skyboxes
@@ -34,7 +34,7 @@
 - Various Resolution modes
 - Crytek Sponza
 
-[![OGLRenderer v1.6](https://img.youtube.com/vi/PC8fdYX1EY8/0.jpg)](https://www.youtube.com/watch?v=PC8fdYX1EY8)
+[![OGLRenderer v1.7](https://img.youtube.com/vi/PC8fdYX1EY8/0.jpg)](https://www.youtube.com/watch?v=PC8fdYX1EY8)
 
 ## Version 2
 - Physically Based Materials and Lighting (Cook-Torrance)
