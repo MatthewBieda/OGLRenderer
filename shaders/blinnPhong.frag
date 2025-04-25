@@ -60,7 +60,11 @@ uniform SpotLight spotLight;
 uniform Material material;
 uniform sampler2D shadowMap;
 
-uniform bool hasTextures;
+uniform bool hasDiffuse;
+uniform bool hasSpecular;
+uniform bool hasNormal;
+uniform bool useNormalMaps;
+
 uniform bool enableSpotLight;
 uniform vec3 defaultColor;
 
@@ -77,7 +81,7 @@ void main()
 {    
     // properties
     vec3 norm;
-    if (hasTextures)
+    if (hasNormal && useNormalMaps)
     {
         // Sample normal map and transform to [-1, 1] range
         vec3 normalMap = texture(material.texture_normal1, TexCoords).rgb;
@@ -206,11 +210,11 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 tangentFragPos, vec3 viewD
 }
 
 vec3 getDiffuseColor() {
-    return hasTextures ? texture(material.texture_diffuse1, TexCoords).rgb : defaultColor;
+    return hasDiffuse ? texture(material.texture_diffuse1, TexCoords).rgb : defaultColor;
 }
 
 vec3 getSpecularColor() {
-    return hasTextures ? texture(material.texture_specular1, TexCoords).rgb : vec3(0.5);
+    return hasSpecular ? texture(material.texture_specular1, TexCoords).rgb : vec3(0.2);
 }
 
 float shadowCalculation(vec4 FragPosLightSpace)
@@ -224,8 +228,8 @@ float shadowCalculation(vec4 FragPosLightSpace)
     float closestDepth = texture(shadowMap, projCoords.xy).r;
     // Get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
-    // calculate bias (based on depth map resolution and slope)
-    vec3 lightDir = normalize(TBN_inverse * (-dirLight.direction));
+
+    // calculate bias (based on depth map resolution and slope) on world space normals
     float bias = max(0.05 * (1.0 - dot(normalize(WorldNormal), normalize(-dirLight.direction))), 0.005);
 
     // PCF

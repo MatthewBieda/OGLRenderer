@@ -101,6 +101,10 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 		}
 	}
 
+	shader.setBool("hasDiffuse", hasDiffuse);
+	shader.setBool("hasSpecular", hasSpecular);
+	shader.setBool("hasNormal", hasNormal);
+
 	// draw mesh
 	glBindVertexArray(VAO);
 	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);

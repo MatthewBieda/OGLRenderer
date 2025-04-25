@@ -1,7 +1,0 @@
-# Material definition for Blinn-Phong shading
-newmtl BlinnPhongMaterial
-Ka 0.2 0.2 0.2  # Ambient reflectivity
-Kd 0.8 0.0 0.0  # Diffuse reflectivity (red)
-Ks 1.0 1.0 1.0  # Specular reflectivity (white)
-Ns 64.0         # Shininess (higher = sharper highlights)
-# map_Kd texture.png - Diffuse texture (optional)

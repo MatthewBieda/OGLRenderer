@@ -421,6 +421,7 @@ int main() {
 	ShadingMode currentShadingMode = BLINNPHONG;
 
 	bool drawModel = true;
+	bool useNormalMaps = true;
 	LoadModelFolders();
 
 	while (!glfwWindowShouldClose(window))
@@ -557,6 +558,7 @@ int main() {
 
 		// Set Material Properties
 		glUniform1f(glGetUniformLocation(activeShader->ID, "material.shininess"), materialShininess);
+		activeShader->setBool("useNormalMaps", useNormalMaps);
 
 		// Setting Point Light Properties
 		glm::vec3 lightColor(1.0f);
@@ -695,6 +697,7 @@ int main() {
 
 			// Check if we already have this model in cache
 			std::shared_ptr<Model> modelPtr;
+
 			if (modelCache.find(selectedFolder) == modelCache.end()) {
 				// Create new model and add to cache
 				modelPtr = std::make_shared<Model>(modelPath, false, selectedFolder);
@@ -709,6 +712,7 @@ int main() {
 
 			// Add multiple GameObjects
 			int gridSize = static_cast<int>(std::sqrt(instanceCount)); // e.g. 10 for 100 instances
+			float spacing = 2.5f; 
 
 			for (int i = 0; i < instanceCount; ++i) {
 				std::string objName = selectedFolder + "_" + std::to_string(gameObjects.size());
@@ -717,8 +721,6 @@ int main() {
 
 				int row = i / gridSize;
 				int col = i % gridSize;
-
-				float spacing = 2.0f; // Adjust spacing between objects
 
 				obj.position = glm::vec3(col * spacing, 0.0f, row * spacing);
 
@@ -757,6 +759,8 @@ int main() {
 			}
 		}
 
+		ImGui::Separator();
+		ImGui::Checkbox("Enable Normals Maps", &useNormalMaps);
 
 		ImGui::Separator();
 		ImGui::Text("Specular Exponent");
