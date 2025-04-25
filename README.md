@@ -28,15 +28,21 @@
 
 [![OGLRenderer v1.6](https://img.youtube.com/vi/e7xCygjkNcU/0.jpg)](https://www.youtube.com/watch?v=e7xCygjkNcU)
 
+## Version 1.7
+- Instanced Rendering
+- Normal Mapping
+- Various Resolution modes
+- Crytek Sponza
+
+[![OGLRenderer v1.6](https://img.youtube.com/vi/PC8fdYX1EY8/0.jpg)](https://www.youtube.com/watch?v=PC8fdYX1EY8)
+
 ## Version 2
 - Physically Based Materials and Lighting (Cook-Torrance)
-- Normal / Bump / Parallax Mapping
 - HDR/Tone Mapping/Gamma Correction
 - Deferred Rendering
 - Cascading Shadow Maps
 - Bloom/SSAO/Reflections
 - Image Based Lighting
-- Instanced Rendering
 - Skeletal Animations
 
 ## Version 3
