@@ -122,7 +122,8 @@ float initialYPosition = 0.0f;
 
 // Light Properties 
 glm::vec3 direction{ 0.3f, -0.7f, -0.4f };
-glm::vec3 sunLightColor = glm::vec3(10.0f, 9.8f, 9.5f); // Slightly warm sunlight
+glm::vec3 sunLightColor = glm::vec3(5.0f, 4.9f, 4.75f); // Half intensity but same color temperature
+//glm::vec3 sunLightColor = glm::vec3(10.0f, 9.8f, 9.5f); // Slightly warm sunlight
 // or higher for bright daylight: glm::vec3(20.0f, 19.5f, 19.0f);
 
 glm::vec3 pointLightColor = glm::vec3(5.0f, 4.8f, 4.5f); // Slightly warm indoor light
@@ -755,7 +756,7 @@ int main() {
 		}
 
 		ImGui::SameLine();
-		if (ImGui::Button("Remove Light") && pointLightPositions.size() != 0)
+		if (ImGui::Button("Remove Light") && !pointLightPositions.empty())
 		{
 			pointLightPositions.pop_back();
 		}

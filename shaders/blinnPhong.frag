@@ -78,7 +78,7 @@ vec3 getSpecularColor();
 void main()
 {    
     // Simple material properties
-    vec3 albedo = hasAlbedo ? pow(texture(pbrMaterial.albedoMap, TexCoords).rgb, vec3(2.2)) : defaultAlbedo; // Linear space
+    vec3 albedo = hasAlbedo ? texture(pbrMaterial.albedoMap, TexCoords).rgb : defaultAlbedo;
     float metallic = hasMetallic ? texture(pbrMaterial.metallicMap, TexCoords).r : defaultMetallic;
     float roughness = hasRoughness ? texture(pbrMaterial.roughnessMap, TexCoords).r : defaultRoughness;
     float ao = hasAO ? texture(pbrMaterial.aoMap, TexCoords).r : defaultAO;
