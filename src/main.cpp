@@ -120,19 +120,17 @@ float jumpVelocity = 5.0f;
 float gravity = 9.8f;
 float initialYPosition = 0.0f;
 
-// Material properties
-float materialShininess = 32.0f;
-
-// Point Light variables
-float ambientStrength = 0.05f;
-float diffuseStrength = 0.8f;
-float specularStrength = 1.0f;
-
-// Directional light variables
+// Light Properties 
 glm::vec3 direction{ 0.3f, -0.7f, -0.4f };
-float dirAmbient = 0.05f;
-float dirDiffuse = 0.4f;
-float dirSpecular = 0.5f;
+glm::vec3 sunLightColor = glm::vec3(10.0f, 9.8f, 9.5f); // Slightly warm sunlight
+// or higher for bright daylight: glm::vec3(20.0f, 19.5f, 19.0f);
+
+glm::vec3 pointLightColor = glm::vec3(5.0f, 4.8f, 4.5f); // Slightly warm indoor light
+// For a warm/yellowish bulb: glm::vec3(5.0f, 4.0f, 2.5f);
+// For a cool/bluish light: glm::vec3(3.0f, 3.5f, 5.0f);
+
+// For flashlight/spotlight
+glm::vec3 spotlightColor = glm::vec3(4.0f); // White light
 
 // Flashlight toggle
 bool useFlashlight = false;
@@ -553,29 +551,15 @@ int main() {
 		}
 
 		activeShader->use();
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "viewPos"), 1, glm::value_ptr(camera.Position));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "camPos"), 1, glm::value_ptr(camera.Position));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
 
 		// Set Material Properties
-		glUniform1f(glGetUniformLocation(activeShader->ID, "material.shininess"), materialShininess);
 		activeShader->setBool("useNormalMaps", useNormalMaps);
-
-		// Setting Point Light Properties
-		glm::vec3 lightColor(1.0f);
-		glm::vec3 diffuseColor = lightColor * glm::vec3(diffuseStrength);
-		glm::vec3 ambientColor = lightColor * glm::vec3(ambientStrength);
-		glm::vec3 specularColor = glm::vec3(specularStrength);
-
-		// Global attenutation settings
-		float constant = 1.0f;
-		float linear = 0.09f;
-		float quadratic = 0.032f;
 
 		// Directional Light
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.direction"), 1, glm::value_ptr(direction));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.ambient"), 1, glm::value_ptr(glm::vec3(dirAmbient)));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.diffuse"), 1, glm::value_ptr(glm::vec3(dirDiffuse)));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.specular"), 1, glm::value_ptr(glm::vec3(dirSpecular)));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.color"), 1, glm::value_ptr(sunLightColor));
 
 		// Point Lights
 		glUniform1i(glGetUniformLocation(activeShader->ID, "NR_POINT_LIGHTS"), pointLightPositions.size());
@@ -584,24 +568,14 @@ int main() {
 			std::string number = std::to_string(i);
 
 			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].position").c_str()), 1, glm::value_ptr(pointLightPositions[i]));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].ambient").c_str()), 1, glm::value_ptr(ambientColor));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].diffuse").c_str()), 1, glm::value_ptr(diffuseColor));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].specular").c_str()), 1, glm::value_ptr(specularColor));
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].constant").c_str()), constant);
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].linear").c_str()), linear);
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].quadratic").c_str()), quadratic);
+			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].color").c_str()), 1, glm::value_ptr(pointLightColor));
 		}
 
 		// Spot light
 		glUniform1i(glGetUniformLocation(activeShader->ID, "enableSpotLight"), useFlashlight ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.position"), 1, glm::value_ptr(camera.Position));
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.direction"), 1, glm::value_ptr(camera.Front));
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.constant"), constant);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.linear"), linear);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.quadratic"), quadratic);
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.color"), 1, glm::value_ptr(spotlightColor));
 		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
 		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
 
@@ -611,10 +585,18 @@ int main() {
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-		glm::vec3 defaultColor{ 0.8f,0.8f,0.8f };
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "defaultColor"), 1, glm::value_ptr(defaultColor));
+		// Default PBR values
+		glm::vec3 defaultAlbedo = glm::vec3(0.8f);
+		float defaultMetallic = 0.0f;
+		float defaultRoughness = 0.5;
+		float defaultAO = 1.0f;
 
-		// Use higher texture unit to not overlap Diffuse and Specular
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "defaultAlbedo"), 1, glm::value_ptr(defaultAlbedo));
+		activeShader->setFloat("defaultMetallic", defaultMetallic);
+		activeShader->setFloat("defaultRoughness", defaultRoughness);
+		activeShader->setFloat("defaultAO", defaultAO);
+
+		// Use texture unit 5 for shadow map to allow room for albedo/normals/metallic/roughness/ao
 		glUniform1i(glGetUniformLocation(activeShader->ID, "shadowMap"), 5);
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
@@ -763,16 +745,6 @@ int main() {
 		ImGui::Checkbox("Enable Normals Maps", &useNormalMaps);
 
 		ImGui::Separator();
-		ImGui::Text("Specular Exponent");
-		ImGui::SliderFloat("Shininess", &materialShininess, 1.0f, 256.0f);
-
-		ImGui::Separator();
-		ImGui::Text("Point Light Properties");
-		ImGui::SliderFloat("Ambient Strength", &ambientStrength, 0.0f, 1.0f);
-		ImGui::SliderFloat("Diffuse Strength", &diffuseStrength, 0.0f, 1.0f);
-		ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 1.0f);
-
-		ImGui::Separator();
 		ImGui::Text("Active Point Lights: %zu/%d", pointLightPositions.size(), MAX_POINT_LIGHTS);
 
 		if (ImGui::Button("Add Light") && pointLightPositions.size() < MAX_POINT_LIGHTS)
@@ -802,9 +774,6 @@ int main() {
 		ImGui::Separator();
 		ImGui::Text("Directional Light Properties");
 		ImGui::DragFloat3("Direction", glm::value_ptr(direction), 0.1f);
-		ImGui::SliderFloat("Directional Ambient", &dirAmbient, 0.0f, 1.0f);
-		ImGui::SliderFloat("Directional Diffuse", &dirDiffuse, 0.0f, 1.0f);
-		ImGui::SliderFloat("Directional Specular", &dirSpecular, 0.0f, 1.0f);
 
 		ImGui::Separator();
 		ImGui::Checkbox("Flaslight Toggle", &useFlashlight);

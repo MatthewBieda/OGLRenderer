@@ -17,10 +17,11 @@ struct Vertex
 
 enum struct TextureType
 {
-	DIFFUSE,
-	SPECULAR,
+	ALBEDO,
 	NORMAL,
-	HEIGHT
+	METALLIC,
+	ROUGHNESS,
+	AO
 };
 
 struct Texture

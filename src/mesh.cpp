@@ -65,45 +65,63 @@ Mesh::~Mesh()
 void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 {
 	// Define fixed texture units for each type
-	const uint32_t DIFFUSE_UNIT = 0;
-	const uint32_t SPECULAR_UNIT = 1;
-	const uint32_t NORMAL_UNIT = 2;
+	const uint32_t ALBEDO_UNIT = 0;
+	const uint32_t NORMAL_UNIT = 1;
+	const uint32_t METALLIC_UNIT = 2;
+	const uint32_t ROUGHNESS_UNIT = 3;
+	const uint32_t AO_UNIT = 4;
 
 	// Ensure uniform sampler bindings are correct
-	shader.setInt("material.texture_diffuse1", DIFFUSE_UNIT);
-	shader.setInt("material.texture_specular1", SPECULAR_UNIT);
-	shader.setInt("material.texture_normal1", NORMAL_UNIT);
+	shader.setInt("pbrMaterial.albedoMap", ALBEDO_UNIT);
+	shader.setInt("pbrMaterial.normalMap", NORMAL_UNIT);
+	shader.setInt("pbrMaterial.metallicMap", METALLIC_UNIT);
+	shader.setInt("pbrMaterial.roughnessMap", ROUGHNESS_UNIT);
+	shader.setInt("pbrMaterial.aoMap", AO_UNIT);
 
 	// Bind textures to their designated units by type
-	bool hasDiffuse = false;
-	bool hasSpecular = false;
+	bool hasAlbedo = false;
 	bool hasNormal = false;
+	bool hasMetallic = false;
+	bool hasRoughness = false;
+	bool hasAO = false;
 
 	for (const Texture& texture : textures)
 	{
 		switch (texture.type)
 		{
-		case TextureType::DIFFUSE:
-			glActiveTexture(GL_TEXTURE0 + DIFFUSE_UNIT);
+		case TextureType::ALBEDO:
+			glActiveTexture(GL_TEXTURE0 + ALBEDO_UNIT);
 			glBindTexture(GL_TEXTURE_2D, texture.id);
-			hasDiffuse = true;
-			break;
-		case TextureType::SPECULAR:
-			glActiveTexture(GL_TEXTURE0 + SPECULAR_UNIT);
-			glBindTexture(GL_TEXTURE_2D, texture.id);
-			hasSpecular = true;
+			hasAlbedo = true;
 			break;
 		case TextureType::NORMAL:
 			glActiveTexture(GL_TEXTURE0 + NORMAL_UNIT);
 			glBindTexture(GL_TEXTURE_2D, texture.id);
 			hasNormal = true;
 			break;
+		case TextureType::METALLIC:
+			glActiveTexture(GL_TEXTURE0 + METALLIC_UNIT);
+			glBindTexture(GL_TEXTURE_2D, texture.id);
+			hasMetallic = true;
+			break;
+		case TextureType::ROUGHNESS:
+			glActiveTexture(GL_TEXTURE0 + ROUGHNESS_UNIT);
+			glBindTexture(GL_TEXTURE_2D, texture.id);
+			hasRoughness = true;
+			break;
+		case TextureType::AO:
+			glActiveTexture(GL_TEXTURE0 + AO_UNIT);
+			glBindTexture(GL_TEXTURE_2D, texture.id);
+			hasAO = true;
+			break;
 		}
 	}
 
-	shader.setBool("hasDiffuse", hasDiffuse);
-	shader.setBool("hasSpecular", hasSpecular);
+	shader.setBool("hasAlbedo", hasAlbedo);
 	shader.setBool("hasNormal", hasNormal);
+	shader.setBool("hasMetallic", hasMetallic);
+	shader.setBool("hasRoughness", hasRoughness);
+	shader.setBool("hasAO", hasAO);
 
 	// draw mesh
 	glBindVertexArray(VAO);
@@ -127,23 +145,23 @@ void Mesh::setupMesh(GLuint instanceVBO)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(uint32_t), indices.data(), GL_STATIC_DRAW);
 
-	// positions
+	// Vertex positions
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-	// normals
+	// Vertex normals
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
-	// texture coords
+	// Texture Co-ordinates
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-	// vertex tangent
+	// Tangents
 	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-	// vertex bitangent
+	// Bitangents
 	glEnableVertexAttribArray(4);
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
 
-	// --- Instance Matrix Attributes (mat4 = 4 vec4s) ---
+	//Instance Matrix Attributes (mat4 = 4 vec4s)
 	glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
 
 	for (int i = 0; i < 4; ++i)

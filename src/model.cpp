@@ -219,26 +219,29 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 	// Process materials
 	aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-	// We assume a convention for sampler name in the shaders. 
-	// Each diffuse texture should be named as "texture_diffuseN" wher N ranges from 1 through MAX_SAMPLER_NUMBER
-	// The same applies to the other texture types, i.e.
-	// diffuse: texture_diffuseN
-	// specular: texture_specularN
-	// normal: texture_normalN
+	std::vector<Texture> albedoMap = loadMaterialTextures(material, aiTextureType_BASE_COLOR, TextureType::ALBEDO);
+	// If no BASE_COLOR, try DIFFUSE as fallback
+	if (albedoMap.empty()) {
+		albedoMap = loadMaterialTextures(material, aiTextureType_DIFFUSE, TextureType::ALBEDO);
+	}
 
-	// 1: Diffuse Maps
-	std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, TextureType::DIFFUSE);
-	textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+	std::vector<Texture> normalMap = loadMaterialTextures(material, aiTextureType_NORMALS, TextureType::NORMAL);
+	// If no NORMALS, try HEIGHT as fallback (some formats store normals here)
+	if (normalMap.empty()) {
+		normalMap = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::NORMAL);
+	}
 
-	// 2: Specular Maps
-	std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, TextureType::SPECULAR);
-	textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+	std::vector<Texture> metallicMap = loadMaterialTextures(material, aiTextureType_METALNESS, TextureType::METALLIC);
+	std::vector<Texture> roughnessMap = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::ROUGHNESS);
+	std::vector<Texture> aoMap = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AO);
 
-	// 3: Normal/Height Maps
-	std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::NORMAL);
-	textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+	textures.insert(textures.end(), albedoMap.begin(), albedoMap.end());
+	textures.insert(textures.end(), normalMap.begin(), normalMap.end());
+	textures.insert(textures.end(), metallicMap.begin(), metallicMap.end());
+	textures.insert(textures.end(), roughnessMap.begin(), roughnessMap.end());
+	textures.insert(textures.end(), aoMap.begin(), aoMap.end());
 
-	if (!diffuseMaps.empty())
+	if (!albedoMap.empty())
 	{
 		hasTextures = true;
 	}
@@ -272,7 +275,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType 
 		if (!skip)
 		{
 			Texture texture;
-			texture.id = TextureFromFile(str.C_Str(), directory, gammaCorrection);
+			texture.id = TextureFromFile(str.C_Str(), directory, typeName);
 			texture.type = typeName;
 			texture.path = str.C_Str();
 			textures.push_back(texture);
@@ -283,29 +286,37 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType 
 	return textures;
 }
 
-uint32_t TextureFromFile(const std::string& path, const std::string& directory, bool gamma)
+uint32_t TextureFromFile(const std::string& path, const std::string& directory, TextureType type)
 {
 	uint32_t textureID;
 	glGenTextures(1, &textureID);
-
 	std::string fullPath = directory + '/' + path;
 
 	int width, height, nrChannels;
 	uint8_t* data = stbi_load(fullPath.c_str(), &width, &height, &nrChannels, 0);
+
 	if (data)
 	{
-		GLenum format = GL_RGB;
-		if (nrChannels == 1)
+		GLenum format {};
+		GLenum internalFormat {};
+
+		if (nrChannels == 1) {
 			format = GL_RED;
-		else if (nrChannels == 3)
+			internalFormat = GL_RED;
+		}
+		else if (nrChannels == 3) {
 			format = GL_RGB;
-		else if (nrChannels == 4)
+			// Use SRGB only for albedo textures
+			internalFormat = (type == TextureType::ALBEDO) ? GL_SRGB : GL_RGB;
+		}
+		else if (nrChannels == 4) {
 			format = GL_RGBA;
+			// Use SRGB_ALPHA only for albedo textures
+			internalFormat = (type == TextureType::ALBEDO) ? GL_SRGB_ALPHA : GL_RGBA;
+		}
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexImage2D(GL_TEXTURE_2D, 0,
-			gamma ? (format == GL_RGBA ? GL_SRGB_ALPHA : GL_SRGB) : format,
-			width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		// Texture wrapping/filtering options
@@ -319,7 +330,6 @@ uint32_t TextureFromFile(const std::string& path, const std::string& directory, 
 	else
 	{
 		std::cerr << "Failed to load texture" << std::endl;
-		stbi_image_free(data);
 	}
 
 	return textureID;

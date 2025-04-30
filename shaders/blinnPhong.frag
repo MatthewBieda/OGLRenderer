@@ -1,220 +1,192 @@
 #version 330 core
 out vec4 FragColor;
 
-struct Material {
-    sampler2D texture_diffuse1;
-    sampler2D texture_specular1;
-    sampler2D texture_normal1;
-    float shininess;
-}; 
+in vec2 TexCoords;
+in vec3 WorldPos;
+in vec3 Normal;
+in vec4 FragPosLightSpace;
+in mat3 TBN;
 
+struct PBRMaterial {
+    sampler2D albedoMap;
+    sampler2D normalMap;
+    sampler2D metallicMap;
+    sampler2D roughnessMap;
+    sampler2D aoMap;
+};
+
+// Material properties
+uniform bool hasAlbedo;
+uniform bool hasNormal;
+uniform bool hasMetallic;
+uniform bool hasRoughness;
+uniform bool hasAO;
+uniform bool useNormalMaps;
+
+uniform vec3 defaultAlbedo;
+uniform float defaultMetallic;
+uniform float defaultRoughness;
+uniform float defaultAO;
+
+// Light structures
 struct DirLight {
     vec3 direction;
-	
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    vec3 color;
 };
 
 struct PointLight {
     vec3 position;
-    
-    float constant;
-    float linear;
-    float quadratic;
-	
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    vec3 color;
 };
 
 struct SpotLight {
     vec3 position;
     vec3 direction;
+    vec3 color;
+
     float cutOff;
     float outerCutOff;
-  
-    float constant;
-    float linear;
-    float quadratic;
-  
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;       
 };
 
+// Light Uniforms
 #define MAX_POINT_LIGHTS 10
-
-in vec2 TexCoords;
-in vec3 TangentViewPos;
-in vec3 TangentFragPos;
-in vec3 WorldNormal;
-in vec4 FragPosLightSpace;
-in mat3 TBN_inverse;
-
-uniform vec3 viewPos;
 uniform DirLight dirLight;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform int NR_POINT_LIGHTS;
 uniform SpotLight spotLight;
-uniform Material material;
+uniform bool enableSpotLight;
+uniform vec3 camPos;
+uniform PBRMaterial pbrMaterial;
 uniform sampler2D shadowMap;
 
-uniform bool hasDiffuse;
-uniform bool hasSpecular;
-uniform bool hasNormal;
-uniform bool useNormalMaps;
-
-uniform bool enableSpotLight;
-uniform vec3 defaultColor;
+// Constants
+const float PI = 3.14159265359;
 
 // function prototypes
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
+vec3 getNormalFromMap();
+float DistributionGGX(vec3 N, vec3 H, float roughness);
+float GeometrySchlickGGX(float NdotV, float roughness);
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
+vec3 fresnelSchlick(float cosTheta, vec3 F0);
+float shadowCalculation(vec4 FragPosLightSpace);
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0);
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0);
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0);
 vec3 getDiffuseColor();
 vec3 getSpecularColor();
 
-float shadowCalculation(vec4 FragPosLightSpace);
-
 void main()
 {    
-    // properties
-    vec3 norm;
+    // Simple material properties
+    vec3 albedo = hasAlbedo ? pow(texture(pbrMaterial.albedoMap, TexCoords).rgb, vec3(2.2)) : defaultAlbedo; // Linear space
+    float metallic = hasMetallic ? texture(pbrMaterial.metallicMap, TexCoords).r : defaultMetallic;
+    float roughness = hasRoughness ? texture(pbrMaterial.roughnessMap, TexCoords).r : defaultRoughness;
+    float ao = hasAO ? texture(pbrMaterial.aoMap, TexCoords).r : defaultAO;
+
+    // Get normal
+    vec3 N;
     if (hasNormal && useNormalMaps)
     {
-        // Sample normal map and transform to [-1, 1] range
-        vec3 normalMap = texture(material.texture_normal1, TexCoords).rgb;
-        normalMap = normalMap * 2.0 - 1.0;
+        // Sample normal map and transform to world space
+        vec3 normalMap = texture(pbrMaterial.normalMap, TexCoords).rgb;
+        normalMap = normalMap * 2.0 - 1.0; // Transform from [0,1] to [-1,1]
 
-        // Invert Y component to convert from DirectX to OpenGL format
-        normalMap.y = -normalMap.y;
-
-        norm = normalize(normalMap);
+        N = normalize(TBN * normalMap); // Transform to world space
     } else {
-        // Transform World normal to Tangent space if there is no normal map
-        norm = normalize(TBN_inverse * WorldNormal);
+        N = normalize(Normal);
     }
 
-    // Calculate the view direction in Tangent space
-    vec3 viewDir = normalize(TangentViewPos - TangentFragPos);
-    
-    // == =====================================================
-    // Our lighting is set up in 3 phases: directional, point lights and an optional flashlight
-    // For each phase, a calculate function is defined that calculates the corresponding color
-    // per lamp. In the main() function we take all the calculated colors and sum them up for
-    // this fragment's final color.
-    // == =====================================================
-    // phase 1: directional lighting
-    // The dirLight.direction needs to be transformed to tangent space
-    vec3 result = CalcDirLight(dirLight, norm, viewDir);
+    // View direction
+    vec3 V = normalize(camPos - WorldPos);
 
-    // phase 2: point lights
-    for (int i = 0; i < NR_POINT_LIGHTS; i++) 
+    // Calculate fresnel reflectance at normal incidence
+    // If dialectric (like plastic) use F0 of 0.04
+    // If metal, use albedo color as F0
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, metallic);
+
+    // Calculate shadow
+    float shadow = shadowCalculation(FragPosLightSpace);
+
+    // Initialze reflectance
+    vec3 Lo = vec3(0.0);
+
+    // Directional Light
+    vec3 dirLightContribution = CalcDirLight(dirLight, N, V, albedo, metallic, roughness, F0);
+    dirLightContribution *= (1.0 - shadow); // Apply shadow to directional light
+    Lo += dirLightContribution;
+
+    // Point Lights
+    for (int i = 0; i < NR_POINT_LIGHTS; ++i)
     {
-        // Trasform point light position to tangent space in the function
-        result += CalcPointLight(pointLights[i], norm, TangentFragPos, viewDir);    
+        Lo += CalcPointLight(pointLights[i], N, WorldPos, V, albedo, metallic, roughness, F0);
     }
 
-    // phase 3: spot light
+    // Spot Light
     if (enableSpotLight) {
         // Transform spot light position to tangent space in the function
-        result += CalcSpotLight(spotLight, norm, TangentFragPos, viewDir);    
+        Lo += CalcSpotLight(spotLight, N, WorldPos, V, albedo, metallic, roughness, F0);    
     }
 
-    FragColor = vec4(result, 1.0);
+    // Add ambient term (will be replace with IBL)
+    vec3 ambient = vec3(0.03) * albedo * ao;
+
+    // Combine ambient and reflectance
+    vec3 color = ambient + Lo;
+
+    // HDR Tonemapping
+    color = color / (color + vec3(1.0));
+
+    // Apply exposure adjustment
+    // float exposure = 1.0; // Adjust this value as needed (higher = brighter)
+    // color = vec3(1.0) - exp(-color * exposure);
+
+    // Gamma correction
+    color = pow(color, vec3(1.0/2.2));
+
+    FragColor = vec4(color, 1.0);
 }
 
-// calculates the color when using a directional light.
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
+float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
-    vec3 TangentLightDir = normalize(TBN_inverse * (-light.direction));
-    // diffuse shading
-    float diff = max(dot(normal, TangentLightDir), 0.0);
-    // specular shading
-    vec3 halfwayDir = normalize(TangentLightDir + viewDir);  
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess * 4);
-    // combine results
-    vec3 ambient = light.ambient * getDiffuseColor();
-    vec3 diffuse = light.diffuse * diff * getDiffuseColor();
-    vec3 specular = light.specular * spec * getSpecularColor();
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
 
-    // calculate shadows
-    float shadow = shadowCalculation(FragPosLightSpace);
-    
-    // apply shadow to diffuse and specular
-    diffuse *= (1.0 - shadow);
-    specular *= (1.0 - shadow);
-    
-    return (ambient + diffuse + specular);  
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / max(denom, 0.0001); // Prevent division by 0
 }
 
-// calculates the color when using a point light.
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 tangentFragPos, vec3 viewDir)
+float GeometrySchlickGGX(float NdotV, float roughness)
 {
-    // Transform light position to tangent space
-    vec3 tangentLightPos = TBN_inverse * light.position;
-    vec3 lightDir = normalize(tangentLightPos - tangentFragPos);
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
 
-    // diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
-    // specular shading
-    vec3 halfwayDir = normalize(lightDir + viewDir);  
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess * 4);
-    // attenuation
-    float distance = length(tangentLightPos - tangentFragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
-    // combine results
-    vec3 ambient = light.ambient * getDiffuseColor();
-    vec3 diffuse = light.diffuse * diff * getDiffuseColor();
-    vec3 specular = light.specular * spec * getSpecularColor();
+    float nom = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
 
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
-
-    return (ambient + diffuse + specular);
+    return nom / max(denom, 0.0001); // Prevent division by 0;
 }
 
-// calculates the color when using a spot light.
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 tangentFragPos, vec3 viewDir)
+// Smith's method for combing geometry terms
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{  
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
-    // Transform spot light position and direction to tangent space
-    vec3 tangentLightPos = TBN_inverse * light.position;
-    vec3 tangentLightDir = normalize(TBN_inverse * (-light.direction));
-
-    vec3 lightDir = normalize(tangentLightPos - tangentFragPos);
-
-    // diffuse shading
-    float diff = max(dot(normal, lightDir), 0.0);
-    // specular shading
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    // attenuation
-    float distance = length(tangentLightPos - tangentFragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
-    // spotlight intensity
-    float theta = dot(lightDir, normalize(-tangentLightDir)); 
-    float epsilon = light.cutOff - light.outerCutOff;
-    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-    // combine results
-    vec3 ambient = light.ambient * getDiffuseColor();
-    vec3 diffuse = light.diffuse * diff * getDiffuseColor();
-    vec3 specular = light.specular * spec * getSpecularColor();
-
-    ambient *= attenuation * intensity;
-    diffuse *= attenuation * intensity;
-    specular *= attenuation * intensity;
-
-    return (ambient + diffuse + specular);
-}
-
-vec3 getDiffuseColor() {
-    return hasDiffuse ? texture(material.texture_diffuse1, TexCoords).rgb : defaultColor;
-}
-
-vec3 getSpecularColor() {
-    return hasSpecular ? texture(material.texture_specular1, TexCoords).rgb : vec3(0.2);
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);   
 }
 
 float shadowCalculation(vec4 FragPosLightSpace)
@@ -224,13 +196,13 @@ float shadowCalculation(vec4 FragPosLightSpace)
     // Transform to [0,1] range
     projCoords = projCoords * 0.5 + 0.5;
 
-    // Get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    // Get closest depth value from light's perspective
     float closestDepth = texture(shadowMap, projCoords.xy).r;
     // Get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
 
     // calculate bias (based on depth map resolution and slope) on world space normals
-    float bias = max(0.05 * (1.0 - dot(normalize(WorldNormal), normalize(-dirLight.direction))), 0.005);
+    float bias = max(0.05 * (1.0 - dot(normalize(Normal), normalize(-dirLight.direction))), 0.005);
 
     // PCF
     float shadow = 0.0;
@@ -250,4 +222,118 @@ float shadowCalculation(vec4 FragPosLightSpace)
         shadow = 0.0;
         
     return shadow;
+}
+
+vec3 CalcDirLight(DirLight light, vec3 N, vec3 V, vec3 albedo, float metallic, float roughness, vec3 F0)
+{
+    // Light direction
+    vec3 L = normalize(-light.direction);
+
+    // Half vector
+    vec3 H = normalize(V + L);
+
+    // Calculate radiance (no attenuation for directional lights)
+    vec3 radiance = light.color;
+
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    // Calculate specular component
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular = numerator / denominator;
+
+    // Energy conservation
+    vec3 ks = F;
+    vec3 kD = vec3(1.0) - ks;
+    kD *= 1.0 - metallic; // Metals have no diffuse reflections
+
+    // Scale by NdotL
+    float NdotL = max(dot(N, L), 0.0);
+    
+    // Combine diffuse and specular
+    return (kD * albedo / PI + specular) * radiance * NdotL;
+}
+
+vec3 CalcPointLight(PointLight light, vec3 N, vec3 fragPos, vec3 V, vec3 albedo, float metallic, float roughness, vec3 F0)
+{
+    // Light direction
+    vec3 L = normalize(light.position - fragPos);
+
+    // Half vector
+    vec3 H = normalize(V + L);
+
+    // Caclulate distance and attenuation
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / max(distance * distance, 0.001);
+    vec3 radiance = light.color * attenuation;
+
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    // Calculate specular component
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular = numerator / denominator;
+
+    // kS is equal to Fresnel
+    vec3 ks = F;
+
+    // For energy conservation, the diffuse and specular light can't be above 1.0 (unless the surface is emissive)
+    // So we set the diffuse component kD to 1.0 - kS
+    vec3 kD = vec3(1.0) - ks;
+
+    // Multiply kD by the inverse metalness such that only non-metals have diffuse lighting,
+    // or a linear blend if partially metal (pure metals have no diffuse light)
+    kD *= 1.0 - metallic;
+
+    // Scale light by NdotL
+    float NdotL = max(dot(N, L), 0.0);
+
+    // outgoing radiance
+    return (kD * albedo / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
+}
+
+vec3 CalcSpotLight(SpotLight light, vec3 N, vec3 fragPos, vec3 V, vec3 albedo, float metallic, float roughness, vec3 F0)
+{
+    // Light direction
+    vec3 L = normalize(light.position - fragPos);
+
+    // Half vector
+    vec3 H = normalize(V + L);
+
+    // spotlight intensity
+    float theta = dot(L, normalize(-light.direction)); 
+    float epsilon = light.cutOff - light.outerCutOff;
+    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+
+    // Calculate distance and attenuation
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / max(distance * distance, 0.001);
+    vec3 radiance = light.color * attenuation * intensity;
+
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    // Calculate specular component
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular = numerator / denominator;
+
+    // Energy conservation
+    vec3 ks = F;
+    vec3 kD = vec3(1.0) - ks;
+    kD *= 1.0 - metallic; // Metals have no diffuse reflections
+
+    // Scale by NdotL
+    float NdotL = max(dot(N, L), 0.0);
+
+    // Combine diffuse and specular
+    return (kD * albedo / PI + specular) * radiance * NdotL;
 }
