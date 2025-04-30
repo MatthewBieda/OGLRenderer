@@ -44,6 +44,8 @@
 - Bloom/SSAO/Reflections
 - Image Based Lighting
 - Skeletal Animations
+- Spotlight & Point Light Shadows (Omnidirectional)
+- Transparency
 
 ## Version 3
 - Vulkan Rewrite
