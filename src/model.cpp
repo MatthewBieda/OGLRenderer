@@ -233,7 +233,12 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 
 	std::vector<Texture> metallicMap = loadMaterialTextures(material, aiTextureType_METALNESS, TextureType::METALLIC);
 	std::vector<Texture> roughnessMap = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::ROUGHNESS);
+
 	std::vector<Texture> aoMap = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AO);
+	// If no AO map, you might extract AO from ambient textures as fallback
+	if (aoMap.empty()) {
+		aoMap = loadMaterialTextures(material, aiTextureType_AMBIENT, TextureType::AO);
+	}
 
 	textures.insert(textures.end(), albedoMap.begin(), albedoMap.end());
 	textures.insert(textures.end(), normalMap.begin(), normalMap.end());

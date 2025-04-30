@@ -755,7 +755,7 @@ int main() {
 		}
 
 		ImGui::SameLine();
-		if (ImGui::Button("Remove Light"))
+		if (ImGui::Button("Remove Light") && pointLightPositions.size() != 0)
 		{
 			pointLightPositions.pop_back();
 		}
