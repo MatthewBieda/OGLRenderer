@@ -400,15 +400,8 @@ int main() {
 	blinnPhongShading.setInt("irradianceMap", 6);
 	blinnPhongShading.setInt("prefilterMap", 7);
 	blinnPhongShading.setInt("brdfLUT", 8);
-	blinnPhongShading.setInt("useIBL", true);
 
-	// Before rendering, bind the textures
-	glActiveTexture(GL_TEXTURE6);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
-	glActiveTexture(GL_TEXTURE7);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-	glActiveTexture(GL_TEXTURE8);
-	glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+	bool useIBL = true;
 
 	// Configure depth map FBO
 	const uint32_t SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
@@ -597,6 +590,7 @@ int main() {
 
 		// Set Material Properties
 		activeShader->setBool("useNormalMaps", useNormalMaps);
+		activeShader->setBool("useIBL", useIBL);
 
 		// Directional Light
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.direction"), 1, glm::value_ptr(direction));
@@ -641,6 +635,18 @@ int main() {
 		glUniform1i(glGetUniformLocation(activeShader->ID, "shadowMap"), 5);
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
+
+		// Bind IBL textures
+		glActiveTexture(GL_TEXTURE6);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+		glActiveTexture(GL_TEXTURE7);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+		glActiveTexture(GL_TEXTURE8);
+		glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+
+		GLint irradianceLoc = glGetUniformLocation(blinnPhongShading.ID, "irradianceMap");
+		GLint prefilterLoc = glGetUniformLocation(blinnPhongShading.ID, "prefilterMap");
+		GLint brdfLoc = glGetUniformLocation(blinnPhongShading.ID, "brdfLUT");
 
 		// Render each model with all its instances
 		for (auto& [modelPtr, transforms] : batchedInstanceData) { 
@@ -784,6 +790,9 @@ int main() {
 
 		ImGui::Separator();
 		ImGui::Checkbox("Enable Normals Maps", &useNormalMaps);
+
+		ImGui::Separator();
+		ImGui::Checkbox("Toggle IBL", &useIBL);
 
 		ImGui::Separator();
 		ImGui::Text("Active Point Lights: %zu/%d", pointLightPositions.size(), MAX_POINT_LIGHTS);
@@ -1141,8 +1150,8 @@ uint32_t loadBRDF(const std::string& path)
 	unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
 	if (data)
 	{
-		GLenum format;
-		GLenum internalFormat;
+		GLenum format {};
+		GLenum internalFormat {};
 		if (nrChannels == 1) {
 			format = GL_RED;
 			internalFormat = GL_RED;
@@ -1169,7 +1178,7 @@ uint32_t loadBRDF(const std::string& path)
 	}
 	else
 	{
-		std::cout << "Texture failed to load at path: " << path << std::endl;
+		std::cout << "BRDF LUT failed to load at path: " << path << std::endl;
 	}
 
 	return textureID;

@@ -127,8 +127,6 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 	glBindVertexArray(VAO);
 	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
 	glBindVertexArray(0);
-
-	glActiveTexture(GL_TEXTURE0);
 }
 
 void Mesh::setupMesh(GLuint instanceVBO)
