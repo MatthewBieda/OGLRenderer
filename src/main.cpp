@@ -145,6 +145,11 @@ float lastFrame = 0.0f; // Time of last frame
 std::vector<std::string> modelFolders;
 static int selectedModelIdx = 0;
 
+// Supported model formats
+const std::unordered_set<std::string> supportedFormats = {
+	".obj", ".gltf", ".glb", ".fbx", ".dae", ".blend", ".3ds", ".ply", ".stl"
+};
+
 // Game object container
 std::vector<GameObject> gameObjects;
 std::unordered_map<std::string, std::shared_ptr<Model>> modelCache;
@@ -397,9 +402,9 @@ int main() {
 	unsigned int brdfLUTTexture = loadBRDF("assets/textures/hdrSkybox/brdf.png");
 
 	blinnPhongShading.use();
-	blinnPhongShading.setInt("irradianceMap", 6);
-	blinnPhongShading.setInt("prefilterMap", 7);
-	blinnPhongShading.setInt("brdfLUT", 8);
+	blinnPhongShading.setInt("irradianceMap", 7);
+	blinnPhongShading.setInt("prefilterMap", 8);
+	blinnPhongShading.setInt("brdfLUT", 9);
 
 	bool useIBL = true;
 
@@ -632,16 +637,16 @@ int main() {
 		activeShader->setFloat("defaultAO", defaultAO);
 
 		// Use texture unit 5 for shadow map to allow room for albedo/normals/metallic/roughness/ao
-		glUniform1i(glGetUniformLocation(activeShader->ID, "shadowMap"), 5);
-		glActiveTexture(GL_TEXTURE5);
+		glUniform1i(glGetUniformLocation(activeShader->ID, "shadowMap"), 6);
+		glActiveTexture(GL_TEXTURE6);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 
 		// Bind IBL textures
-		glActiveTexture(GL_TEXTURE6);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
 		glActiveTexture(GL_TEXTURE7);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
 		glActiveTexture(GL_TEXTURE8);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+		glActiveTexture(GL_TEXTURE9);
 		glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
 		GLint irradianceLoc = glGetUniformLocation(blinnPhongShading.ID, "irradianceMap");
@@ -712,7 +717,6 @@ int main() {
 		}
 
 		static int instanceCount = 1;
-
 		ImGui::InputInt("Instances to Add", &instanceCount);
 		if (instanceCount < 1) 
 		{
@@ -722,11 +726,10 @@ int main() {
 		// Update your "Add Model" button handler
 		if (ImGui::Button("Add Model")) {
 			std::string selectedFolder = modelFolders[selectedModelIdx];
-			std::string modelPath = "assets/models/" + selectedFolder + "/" + selectedFolder + ".obj";
+			std::string modelPath = "assets/models/" + selectedFolder + "/" + selectedFolder + ".gltf";
 
 			// Check if we already have this model in cache
 			std::shared_ptr<Model> modelPtr;
-
 			if (modelCache.find(selectedFolder) == modelCache.end()) {
 				// Create new model and add to cache
 				modelPtr = std::make_shared<Model>(modelPath, false, selectedFolder);
@@ -740,19 +743,15 @@ int main() {
 			}
 
 			// Add multiple GameObjects
-			int gridSize = static_cast<int>(std::sqrt(instanceCount)); // e.g. 10 for 100 instances
+			int gridSize = static_cast<int>(std::sqrt(instanceCount));
 			float spacing = 2.5f; 
 
 			for (int i = 0; i < instanceCount; ++i) {
 				std::string objName = selectedFolder + "_" + std::to_string(gameObjects.size());
-
 				GameObject obj(modelPtr, objName);
-
 				int row = i / gridSize;
 				int col = i % gridSize;
-
 				obj.position = glm::vec3(col * spacing, 0.0f, row * spacing);
-
 				gameObjects.push_back(std::move(obj));
 			}
 			std::cout << "Added " << instanceCount << " instances of " << selectedFolder << std::endl;
@@ -792,7 +791,7 @@ int main() {
 		ImGui::Checkbox("Enable Normals Maps", &useNormalMaps);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Toggle IBL", &useIBL);
+		ImGui::Checkbox("Enable IBL", &useIBL);
 
 		ImGui::Separator();
 		ImGui::Text("Active Point Lights: %zu/%d", pointLightPositions.size(), MAX_POINT_LIGHTS);
@@ -1224,7 +1223,7 @@ void LoadModelFolders()
 		{
 			for (const auto& file : std::filesystem::directory_iterator(entry.path()))
 			{
-				if (file.path().extension() == ".obj") 
+				if (supportedFormats.contains(file.path().extension().string()))
 				{
 					modelFolders.push_back(entry.path().filename().string());
 					break;

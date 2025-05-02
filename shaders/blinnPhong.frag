@@ -13,6 +13,7 @@ struct PBRMaterial {
     sampler2D metallicMap;
     sampler2D roughnessMap;
     sampler2D aoMap;
+    sampler2D emissiveMap;
 };
 
 // Material properties
@@ -21,6 +22,7 @@ uniform bool hasNormal;
 uniform bool hasMetallic;
 uniform bool hasRoughness;
 uniform bool hasAO;
+uniform bool hasEmissive;
 uniform bool useNormalMaps;
 
 uniform vec3 defaultAlbedo;
@@ -67,7 +69,7 @@ uniform bool useIBL;
 
 // Constants
 const float PI = 3.14159265359;
-const float MAX_REFLECTION_LOD = 4.0; // Depending on mip levels of prefilterMap
+const float MAX_REFLECTION_LOD = 0.0; // Depending on mip levels of prefilterMap
 
 // function prototypes
 vec3 getNormalFromMap();
@@ -87,9 +89,10 @@ void main()
 {    
     // Simple material properties
     vec3 albedo = hasAlbedo ? texture(pbrMaterial.albedoMap, TexCoords).rgb : defaultAlbedo;
-    float metallic = hasMetallic ? texture(pbrMaterial.metallicMap, TexCoords).r : defaultMetallic;
-    float roughness = hasRoughness ? texture(pbrMaterial.roughnessMap, TexCoords).r : defaultRoughness;
+    float metallic = hasMetallic ? texture(pbrMaterial.metallicMap, TexCoords).b : defaultMetallic;
+    float roughness = hasRoughness ? texture(pbrMaterial.roughnessMap, TexCoords).g : defaultRoughness;
     float ao = hasAO ? texture(pbrMaterial.aoMap, TexCoords).r : defaultAO;
+    vec3 emission = hasEmissive ? texture(pbrMaterial.emissiveMap, TexCoords).rgb : vec3(0.0);
 
     // Get normal
     vec3 N;
@@ -166,8 +169,8 @@ void main()
         ambient = (kD * diffuse + specular) * ao;
     }
 
-    // Combine ambient and reflectance
-    vec3 color = ambient + Lo;
+    // Combine ambient and reflectance and emission
+    vec3 color = ambient + Lo + emission;
 
     // HDR Tonemapping
     color = color / (color + vec3(1.0));

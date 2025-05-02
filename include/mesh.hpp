@@ -21,7 +21,8 @@ enum struct TextureType
 	NORMAL,
 	METALLIC,
 	ROUGHNESS,
-	AO
+	AO,
+	EMISSIVE
 };
 
 struct Texture

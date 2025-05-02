@@ -70,6 +70,7 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 	const uint32_t METALLIC_UNIT = 2;
 	const uint32_t ROUGHNESS_UNIT = 3;
 	const uint32_t AO_UNIT = 4;
+	const uint32_t EMISSIVE_UNIT = 5;
 
 	// Ensure uniform sampler bindings are correct
 	shader.setInt("pbrMaterial.albedoMap", ALBEDO_UNIT);
@@ -77,6 +78,7 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 	shader.setInt("pbrMaterial.metallicMap", METALLIC_UNIT);
 	shader.setInt("pbrMaterial.roughnessMap", ROUGHNESS_UNIT);
 	shader.setInt("pbrMaterial.aoMap", AO_UNIT);
+	shader.setInt("pbrMaterial.emissiveMap", EMISSIVE_UNIT);
 
 	// Bind textures to their designated units by type
 	bool hasAlbedo = false;
@@ -84,6 +86,7 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 	bool hasMetallic = false;
 	bool hasRoughness = false;
 	bool hasAO = false;
+	bool hasEmissive = false;
 
 	for (const Texture& texture : textures)
 	{
@@ -114,6 +117,11 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 			glBindTexture(GL_TEXTURE_2D, texture.id);
 			hasAO = true;
 			break;
+		case TextureType::EMISSIVE:
+			glActiveTexture(GL_TEXTURE0 + EMISSIVE_UNIT);
+			glBindTexture(GL_TEXTURE_2D, texture.id);
+			hasEmissive = true;
+			break;
 		}
 	}
 
@@ -122,6 +130,7 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 	shader.setBool("hasMetallic", hasMetallic);
 	shader.setBool("hasRoughness", hasRoughness);
 	shader.setBool("hasAO", hasAO);
+	shader.setBool("hasEmissive", hasEmissive);
 
 	// draw mesh
 	glBindVertexArray(VAO);

@@ -240,11 +240,18 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		aoMap = loadMaterialTextures(material, aiTextureType_AMBIENT, TextureType::AO);
 	}
 
+	if (aoMap.empty()) {
+		aoMap = loadMaterialTextures(material, aiTextureType_LIGHTMAP, TextureType::AO);
+	}
+
+	std::vector<Texture> emissiveMap = loadMaterialTextures(material, aiTextureType_EMISSIVE, TextureType::EMISSIVE);
+
 	textures.insert(textures.end(), albedoMap.begin(), albedoMap.end());
 	textures.insert(textures.end(), normalMap.begin(), normalMap.end());
 	textures.insert(textures.end(), metallicMap.begin(), metallicMap.end());
 	textures.insert(textures.end(), roughnessMap.begin(), roughnessMap.end());
 	textures.insert(textures.end(), aoMap.begin(), aoMap.end());
+	textures.insert(textures.end(), emissiveMap.begin(), emissiveMap.end());
 
 	if (!albedoMap.empty())
 	{
