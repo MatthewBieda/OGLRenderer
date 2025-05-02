@@ -67,24 +67,21 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 	// Define fixed texture units for each type
 	const uint32_t ALBEDO_UNIT = 0;
 	const uint32_t NORMAL_UNIT = 1;
-	const uint32_t METALLIC_UNIT = 2;
-	const uint32_t ROUGHNESS_UNIT = 3;
-	const uint32_t AO_UNIT = 4;
-	const uint32_t EMISSIVE_UNIT = 5;
+	const uint32_t METALLIC_ROUGHNESS_UNIT = 2;
+	const uint32_t AO_UNIT = 3;
+	const uint32_t EMISSIVE_UNIT = 4;
 
 	// Ensure uniform sampler bindings are correct
 	shader.setInt("pbrMaterial.albedoMap", ALBEDO_UNIT);
 	shader.setInt("pbrMaterial.normalMap", NORMAL_UNIT);
-	shader.setInt("pbrMaterial.metallicMap", METALLIC_UNIT);
-	shader.setInt("pbrMaterial.roughnessMap", ROUGHNESS_UNIT);
+	shader.setInt("pbrMaterial.metallicRoughnessMap", METALLIC_ROUGHNESS_UNIT);
 	shader.setInt("pbrMaterial.aoMap", AO_UNIT);
 	shader.setInt("pbrMaterial.emissiveMap", EMISSIVE_UNIT);
 
 	// Bind textures to their designated units by type
 	bool hasAlbedo = false;
 	bool hasNormal = false;
-	bool hasMetallic = false;
-	bool hasRoughness = false;
+	bool hasMetallicRoughness = false;
 	bool hasAO = false;
 	bool hasEmissive = false;
 
@@ -102,15 +99,10 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 			glBindTexture(GL_TEXTURE_2D, texture.id);
 			hasNormal = true;
 			break;
-		case TextureType::METALLIC:
-			glActiveTexture(GL_TEXTURE0 + METALLIC_UNIT);
+		case TextureType::METALLIC_ROUGHNESS:
+			glActiveTexture(GL_TEXTURE0 + METALLIC_ROUGHNESS_UNIT);
 			glBindTexture(GL_TEXTURE_2D, texture.id);
-			hasMetallic = true;
-			break;
-		case TextureType::ROUGHNESS:
-			glActiveTexture(GL_TEXTURE0 + ROUGHNESS_UNIT);
-			glBindTexture(GL_TEXTURE_2D, texture.id);
-			hasRoughness = true;
+			hasMetallicRoughness = true;
 			break;
 		case TextureType::AO:
 			glActiveTexture(GL_TEXTURE0 + AO_UNIT);
@@ -127,8 +119,7 @@ void Mesh::DrawInstanced(Shader& shader, int instanceCount) const
 
 	shader.setBool("hasAlbedo", hasAlbedo);
 	shader.setBool("hasNormal", hasNormal);
-	shader.setBool("hasMetallic", hasMetallic);
-	shader.setBool("hasRoughness", hasRoughness);
+	shader.setBool("hasMetallicRoughness", hasMetallicRoughness);
 	shader.setBool("hasAO", hasAO);
 	shader.setBool("hasEmissive", hasEmissive);
 

@@ -10,8 +10,7 @@ in mat3 TBN;
 struct PBRMaterial {
     sampler2D albedoMap;
     sampler2D normalMap;
-    sampler2D metallicMap;
-    sampler2D roughnessMap;
+    sampler2D metallicRoughnessMap;
     sampler2D aoMap;
     sampler2D emissiveMap;
 };
@@ -19,8 +18,7 @@ struct PBRMaterial {
 // Material properties
 uniform bool hasAlbedo;
 uniform bool hasNormal;
-uniform bool hasMetallic;
-uniform bool hasRoughness;
+uniform bool hasMetallicRoughness;
 uniform bool hasAO;
 uniform bool hasEmissive;
 uniform bool useNormalMaps;
@@ -89,8 +87,9 @@ void main()
 {    
     // Simple material properties
     vec3 albedo = hasAlbedo ? texture(pbrMaterial.albedoMap, TexCoords).rgb : defaultAlbedo;
-    float metallic = hasMetallic ? texture(pbrMaterial.metallicMap, TexCoords).b : defaultMetallic;
-    float roughness = hasRoughness ? texture(pbrMaterial.roughnessMap, TexCoords).g : defaultRoughness;
+    vec4 metallicRoughness = hasMetallicRoughness ? texture(pbrMaterial.metallicRoughnessMap, TexCoords) : vec4(defaultMetallic, defaultRoughness, 0.0, 1.0);
+    float metallic = metallicRoughness.b;
+    float roughness = metallicRoughness.g;
     float ao = hasAO ? texture(pbrMaterial.aoMap, TexCoords).r : defaultAO;
     vec3 emission = hasEmissive ? texture(pbrMaterial.emissiveMap, TexCoords).rgb : vec3(0.0);
 

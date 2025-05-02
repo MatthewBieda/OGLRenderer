@@ -19,8 +19,7 @@ enum struct TextureType
 {
 	ALBEDO,
 	NORMAL,
-	METALLIC,
-	ROUGHNESS,
+	METALLIC_ROUGHNESS,
 	AO,
 	EMISSIVE
 };

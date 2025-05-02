@@ -231,8 +231,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 		normalMap = loadMaterialTextures(material, aiTextureType_HEIGHT, TextureType::NORMAL);
 	}
 
-	std::vector<Texture> metallicMap = loadMaterialTextures(material, aiTextureType_METALNESS, TextureType::METALLIC);
-	std::vector<Texture> roughnessMap = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, TextureType::ROUGHNESS);
+	std::vector<Texture> metallicRoughnessMap = loadMaterialTextures(material, aiTextureType_UNKNOWN, TextureType::METALLIC_ROUGHNESS);
 
 	std::vector<Texture> aoMap = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, TextureType::AO);
 	// If no AO map, you might extract AO from ambient textures as fallback
@@ -248,8 +247,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 
 	textures.insert(textures.end(), albedoMap.begin(), albedoMap.end());
 	textures.insert(textures.end(), normalMap.begin(), normalMap.end());
-	textures.insert(textures.end(), metallicMap.begin(), metallicMap.end());
-	textures.insert(textures.end(), roughnessMap.begin(), roughnessMap.end());
+	textures.insert(textures.end(), metallicRoughnessMap.begin(), metallicRoughnessMap.end());
 	textures.insert(textures.end(), aoMap.begin(), aoMap.end());
 	textures.insert(textures.end(), emissiveMap.begin(), emissiveMap.end());
 
@@ -318,13 +316,13 @@ uint32_t TextureFromFile(const std::string& path, const std::string& directory, 
 		}
 		else if (nrChannels == 3) {
 			format = GL_RGB;
-			// Use SRGB only for albedo textures
-			internalFormat = (type == TextureType::ALBEDO) ? GL_SRGB : GL_RGB;
+			// Use SRGB only for albedo textures or emissive
+			internalFormat = (type == TextureType::ALBEDO || type == TextureType::EMISSIVE) ? GL_SRGB : GL_RGB;
 		}
 		else if (nrChannels == 4) {
 			format = GL_RGBA;
-			// Use SRGB_ALPHA only for albedo textures
-			internalFormat = (type == TextureType::ALBEDO) ? GL_SRGB_ALPHA : GL_RGBA;
+			// Use SRGB_ALPHA only for albedo textures or emissive
+			internalFormat = (type == TextureType::ALBEDO || type == TextureType::EMISSIVE) ? GL_SRGB_ALPHA : GL_RGBA;
 		}
 
 		glBindTexture(GL_TEXTURE_2D, textureID);

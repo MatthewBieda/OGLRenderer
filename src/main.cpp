@@ -402,9 +402,9 @@ int main() {
 	unsigned int brdfLUTTexture = loadBRDF("assets/textures/hdrSkybox/brdf.png");
 
 	blinnPhongShading.use();
-	blinnPhongShading.setInt("irradianceMap", 7);
-	blinnPhongShading.setInt("prefilterMap", 8);
-	blinnPhongShading.setInt("brdfLUT", 9);
+	blinnPhongShading.setInt("irradianceMap", 6);
+	blinnPhongShading.setInt("prefilterMap", 7);
+	blinnPhongShading.setInt("brdfLUT", 8);
 
 	bool useIBL = true;
 
@@ -637,16 +637,16 @@ int main() {
 		activeShader->setFloat("defaultAO", defaultAO);
 
 		// Use texture unit 5 for shadow map to allow room for albedo/normals/metallic/roughness/ao
-		glUniform1i(glGetUniformLocation(activeShader->ID, "shadowMap"), 6);
-		glActiveTexture(GL_TEXTURE6);
+		glUniform1i(glGetUniformLocation(activeShader->ID, "shadowMap"), 5);
+		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 
 		// Bind IBL textures
-		glActiveTexture(GL_TEXTURE7);
+		glActiveTexture(GL_TEXTURE6);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
-		glActiveTexture(GL_TEXTURE8);
+		glActiveTexture(GL_TEXTURE7);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-		glActiveTexture(GL_TEXTURE9);
+		glActiveTexture(GL_TEXTURE8);
 		glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
 		GLint irradianceLoc = glGetUniformLocation(blinnPhongShading.ID, "irradianceMap");
