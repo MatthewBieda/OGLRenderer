@@ -87,7 +87,7 @@ void main()
 {    
     // Simple material properties
     vec3 albedo = hasAlbedo ? texture(pbrMaterial.albedoMap, TexCoords).rgb : defaultAlbedo;
-    vec4 metallicRoughness = hasMetallicRoughness ? texture(pbrMaterial.metallicRoughnessMap, TexCoords) : vec4(defaultMetallic, defaultRoughness, 0.0, 1.0);
+    vec4 metallicRoughness = hasMetallicRoughness ? texture(pbrMaterial.metallicRoughnessMap, TexCoords) : vec4(0.0, defaultRoughness, defaultMetallic, 1.0);
     float metallic = metallicRoughness.b;
     float roughness = metallicRoughness.g;
     float ao = hasAO ? texture(pbrMaterial.aoMap, TexCoords).r : defaultAO;
