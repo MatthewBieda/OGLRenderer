@@ -49,7 +49,8 @@ public:
 	}
 };
 
-unsigned int loadCubemap(std::vector<std::string> faces);
+uint32_t loadHDRCubemap(std::vector<std::string> faces);
+uint32_t loadBRDF(const std::string& path);
 
 // Screen 
 int SCR_WIDTH = 2560;
@@ -359,16 +360,55 @@ int main() {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
+	// Load HDR Skybox for background
 	std::vector<std::string> faces
 	{
-		"assets/textures/forest/posx.jpg",
-		"assets/textures/forest/negx.jpg",
-		"assets/textures/forest/posy.jpg",
-		"assets/textures/forest/negy.jpg",
-		"assets/textures/forest/posz.jpg",
-		"assets/textures/forest/negz.jpg",
+		"assets/textures/hdrSkybox/px.hdr",
+		"assets/textures/hdrSkybox/nx.hdr",
+		"assets/textures/hdrSkybox/py.hdr",
+		"assets/textures/hdrSkybox/ny.hdr",
+		"assets/textures/hdrSkybox/pz.hdr",
+		"assets/textures/hdrSkybox/nz.hdr",
 	};
-	uint32_t cubemapTexture = loadCubemap(faces);
+	uint32_t cubemapTexture = loadHDRCubemap(faces);
+
+	// Load cubemaps for IBL 
+	std::vector<std::string> irradianceFaces = {
+		"assets/textures/hdrSkybox/irradiance/posx.hdr",
+		"assets/textures/hdrSkybox/irradiance/negx.hdr",
+		"assets/textures/hdrSkybox/irradiance/posy.hdr",
+		"assets/textures/hdrSkybox/irradiance/negy.hdr",
+		"assets/textures/hdrSkybox/irradiance/posz.hdr",
+		"assets/textures/hdrSkybox/irradiance/negz.hdr"
+	};
+	unsigned int irradianceMap = loadHDRCubemap(irradianceFaces);
+
+	std::vector<std::string> prefilterFaces = {
+		"assets/textures/hdrSkybox/prefilter/posx.hdr",
+		"assets/textures/hdrSkybox/prefilter/negx.hdr",
+		"assets/textures/hdrSkybox/prefilter/posy.hdr",
+		"assets/textures/hdrSkybox/prefilter/negy.hdr",
+		"assets/textures/hdrSkybox/prefilter/posz.hdr",
+		"assets/textures/hdrSkybox/prefilter/negz.hdr"
+	};
+	unsigned int prefilterMap = loadHDRCubemap(prefilterFaces);
+
+	// The BRDF LUT is a 2D texture
+	unsigned int brdfLUTTexture = loadBRDF("assets/textures/hdrSkybox/brdf.png");
+
+	blinnPhongShading.use();
+	blinnPhongShading.setInt("irradianceMap", 6);
+	blinnPhongShading.setInt("prefilterMap", 7);
+	blinnPhongShading.setInt("brdfLUT", 8);
+	blinnPhongShading.setInt("useIBL", true);
+
+	// Before rendering, bind the textures
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
 	// Configure depth map FBO
 	const uint32_t SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
@@ -1048,7 +1088,7 @@ void processControllerInput()
 	}
 }
 
-uint32_t loadCubemap(std::vector<std::string> faces)
+uint32_t loadHDRCubemap(std::vector<std::string> faces)
 {
 	uint32_t textureID;
 	glGenTextures(1, &textureID);
@@ -1057,23 +1097,80 @@ uint32_t loadCubemap(std::vector<std::string> faces)
 	int width, height, nrChannels;
 	for (uint32_t i = 0; i < faces.size(); ++i)
 	{
-		uint8_t* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+		float* data = stbi_loadf(faces[i].c_str(), &width, &height, &nrChannels, 0);
 		if (data)
 		{
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			// Use appropriate format based on channels
+			GLenum format = nrChannels == 3 ? GL_RGB : GL_RGBA;
+
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, width, height, 0, format, GL_FLOAT, data);
 			stbi_image_free(data);
 		}
 		else
 		{
-			std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-			stbi_image_free(data);
+			std::cout << "HDR Cubemap texture failed to load at path: " << faces[i] << std::endl;
 		}
 	}
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	// For prefiltered environment map, enable mipmapping
+	if (faces[0].find("prefilter") != std::string::npos)
+	{
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	}
+	else 
+	{
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	}
+
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
+
+// For standard 2D textures (BRDF LUT)
+uint32_t loadBRDF(const std::string& path)
+{
+	uint32_t textureID;
+	glGenTextures(1, &textureID);
+
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		GLenum format;
+		GLenum internalFormat;
+		if (nrChannels == 1) {
+			format = GL_RED;
+			internalFormat = GL_RED;
+		}
+		else if (nrChannels == 3) {
+			format = GL_RGB;
+			internalFormat = GL_RGB;
+		}
+		else if (nrChannels == 4) {
+			format = GL_RGBA;
+			internalFormat = GL_RGBA;
+		}
+
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+	}
+	else
+	{
+		std::cout << "Texture failed to load at path: " << path << std::endl;
+	}
 
 	return textureID;
 }

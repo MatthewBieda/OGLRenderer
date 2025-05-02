@@ -59,8 +59,15 @@ uniform vec3 camPos;
 uniform PBRMaterial pbrMaterial;
 uniform sampler2D shadowMap;
 
+// IBL Uniforms
+uniform samplerCube irradianceMap; // Diffuse environment lighting
+uniform samplerCube prefilterMap; // Prefiltered environment map for specular
+uniform sampler2D brdfLUT; // BRDF lookup texture
+uniform bool useIBL;
+
 // Constants
 const float PI = 3.14159265359;
+const float MAX_REFLECTION_LOD = 4.0; // Depending on mip levels of prefilterMap
 
 // function prototypes
 vec3 getNormalFromMap();
@@ -68,6 +75,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
+vec3 fresnelSchlickRougness(float cosTheta, vec3 F0, float roughness);
 float shadowCalculation(vec4 FragPosLightSpace);
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0);
@@ -98,6 +106,7 @@ void main()
 
     // View direction
     vec3 V = normalize(camPos - WorldPos);
+    float NdotV = max(dot(N, V), 0.0);
 
     // Calculate fresnel reflectance at normal incidence
     // If dialectric (like plastic) use F0 of 0.04
@@ -128,8 +137,34 @@ void main()
         Lo += CalcSpotLight(spotLight, N, WorldPos, V, albedo, metallic, roughness, F0);    
     }
 
-    // Add ambient term (will be replace with IBL)
+    // Default ambient term if not using IBL
     vec3 ambient = vec3(0.03) * albedo * ao;
+
+    if (useIBL)
+    {
+        // Sample both the diffuse and specular parts of the IBL
+        
+        // 1. Diffuse Irradiance (enivronment lighting)
+        vec3 F = fresnelSchlickRougness(NdotV, F0, roughness);
+        vec3 kS = F;
+        vec3 kD = 1.0 - kS;
+        kD *= 1.0 - metallic; 
+
+        vec3 irradiance = texture(irradianceMap, N).rgb;
+        vec3 diffuse = irradiance * albedo;
+
+        // 2. Specular reflectance with environment map
+        vec3 R = reflect(-V, N);
+        // Use rougness to determine the LOD of the prefilterMap
+        vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+
+        // Get the scale and bias terms from the BRDF LUT
+        vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+        vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+        // Combine diffuse and specular IBL contributions
+        ambient = (kD * diffuse + specular) * ao;
+    }
 
     // Combine ambient and reflectance
     vec3 color = ambient + Lo;
@@ -145,6 +180,11 @@ void main()
     color = pow(color, vec3(1.0/2.2));
 
     FragColor = vec4(color, 1.0);
+}
+
+vec3 fresnelSchlickRougness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
