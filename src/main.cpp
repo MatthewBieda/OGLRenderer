@@ -68,6 +68,13 @@ uint32_t loadBRDF(const std::string& path);
 std::vector<EnvironmentMap> environmentMaps;
 int currentEnvironmentIndex = 0;
 
+// Framebuffers
+uint32_t g_hdrFBO;
+uint32_t g_colorBuffer;
+uint32_t g_rboDepth;
+int g_SCR_WIDTH = 2560;
+int g_SCR_HEIGHT = 1440;
+
 // Screen 
 int SCR_WIDTH = 2560;
 int SCR_HEIGHT = 1440;
@@ -158,8 +165,13 @@ bool useFlashlight = false;
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 
-// Model folder
-std::vector<std::string> modelFolders;
+// Model loading
+struct ModelEntry
+{
+	std::string folderName;
+	std::string modelFilePath;
+};
+std::vector<ModelEntry> modelFolders;
 static int selectedModelIdx = 0;
 
 // Supported model formats
@@ -309,8 +321,8 @@ int main() {
 	// configure global state
 	glEnable(GL_DEPTH_TEST);
 
-	// MSAA
-	glEnable(GL_MULTISAMPLE);
+	// More work to implement with framebuffers, not compatible with Clustered Forward or Deferred anway 
+	//glEnable(GL_MULTISAMPLE);
 
 	// Gamma Correction
 	// glEnable(GL_FRAMEBUFFER_SRGB);
@@ -451,6 +463,13 @@ int main() {
 		std::cout << "Framebuffer incomplete!" << std::endl;
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Assign to global variables for use in callback
+	g_hdrFBO = hdrFBO;
+	g_colorBuffer = colorBuffer;
+	g_rboDepth = rboDepth;
+	g_SCR_WIDTH = SCR_WIDTH;
+	g_SCR_HEIGHT = SCR_HEIGHT;
 
 	//stbi_set_flip_vertically_on_load(true);
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj", false, "lightSource");
@@ -638,7 +657,7 @@ int main() {
 		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
 
 		// View / Projection transformations
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)g_SCR_WIDTH / (float)g_SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -714,9 +733,6 @@ int main() {
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		glDisable(GL_FRAMEBUFFER_SRGB);
-
-
 		postShader.use();
 		postShader.setFloat("exposure", exposure);
 		glActiveTexture(GL_TEXTURE0);
@@ -757,13 +773,17 @@ int main() {
 
 		ImGui::Separator();
 
-		if (ImGui::BeginCombo("Select Model", modelFolders[selectedModelIdx].c_str())) 
+		if (ImGui::BeginCombo("Select Model", modelFolders[selectedModelIdx].folderName.c_str())) 
 		{
 			// Iterate through modelFolders and display each item
 			for (int i = 0; i < modelFolders.size(); ++i) {
 				bool isSelected = (selectedModelIdx == i);
-				if (ImGui::Selectable(modelFolders[i].c_str(), isSelected)) {
+				if (ImGui::Selectable(modelFolders[i].folderName.c_str(), isSelected)) {
 					selectedModelIdx = i;  // Update the selection
+				}
+				if (isSelected)
+				{
+					ImGui::SetItemDefaultFocus();
 				}
 			}
 			ImGui::EndCombo();
@@ -778,8 +798,12 @@ int main() {
 
 		// Update your "Add Model" button handler
 		if (ImGui::Button("Add Model")) {
-			std::string selectedFolder = modelFolders[selectedModelIdx];
-			std::string modelPath = "assets/models/" + selectedFolder + "/" + selectedFolder + ".gltf";
+			ModelEntry& selectedModel = modelFolders[selectedModelIdx];
+			std::string selectedFolder = selectedModel.folderName;
+			std::string modelPath = selectedModel.modelFilePath;
+			std::replace(modelPath.begin(), modelPath.end(), '\\', '/');
+
+			std::cout << selectedFolder << " " << modelPath << std::endl;
 
 			// Check if we already have this model in cache
 			std::shared_ptr<Model> modelPtr;
@@ -1034,6 +1058,23 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	SCR_WIDTH = width;
 	SCR_HEIGHT = height;
 	glViewport(0, 0, width, height);
+
+	// Resize HDR framebuffer textures
+	glBindTexture(GL_TEXTURE_2D, g_colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+
+	// Resize depth renderbuffer
+	glBindRenderbuffer(GL_RENDERBUFFER, g_rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+	// Check FBO status after resize
+	glBindFramebuffer(GL_FRAMEBUFFER, g_hdrFBO);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "Framebuffer incomplete after resize!" << std::endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 void SetDisplayMode(GLFWwindow* window, DisplayMode mode)
@@ -1153,6 +1194,7 @@ void processControllerInput()
 void initEnvironmentMaps()
 {
 	environmentMaps.push_back(loadEnvironmentMap("Snow Field", "assets/textures/snowfield/"));	
+	environmentMaps.push_back(loadEnvironmentMap("Warm Bar", "assets/textures/warmbar/"));	
 }
 
 EnvironmentMap loadEnvironmentMap(const std::string& name, const std::string& basePath)
@@ -1334,22 +1376,16 @@ void LoadModelFolders()
 		{
 			for (const auto& file : std::filesystem::directory_iterator(entry.path()))
 			{
-				if (supportedFormats.contains(file.path().extension().string()))
+				std::string ext = file.path().extension().string();
+				if (supportedFormats.contains(ext))
 				{
-					modelFolders.push_back(entry.path().filename().string());
+					modelFolders.push_back({
+						entry.path().filename().string(), // Folder name
+						file.path().string()			  // Full model file path
+					});
 					break;
 				}
 			}
 		}
 	}
 }
-
-//TODO
-//Move constant light direction transformations to the vertex shader:
-
-//Transform directional light direction once
-//Transform spotlight direction once
-//Pass as varyings to the fragment shader
-
-
-//Consider transforming point light positions in the vertex shader too (if you have only a few points lights)
