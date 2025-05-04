@@ -55,6 +55,7 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform int NR_POINT_LIGHTS;
 uniform SpotLight spotLight;
 uniform bool enableSpotLight;
+uniform bool enableDirLight;
 uniform vec3 camPos;
 uniform PBRMaterial pbrMaterial;
 uniform sampler2D shadowMap;
@@ -123,9 +124,12 @@ void main()
     vec3 Lo = vec3(0.0);
 
     // Directional Light
-    vec3 dirLightContribution = CalcDirLight(dirLight, N, V, albedo, metallic, roughness, F0);
-    dirLightContribution *= (1.0 - shadow); // Apply shadow to directional light
-    Lo += dirLightContribution;
+    if (enableDirLight) 
+    {
+        vec3 dirLightContribution = CalcDirLight(dirLight, N, V, albedo, metallic, roughness, F0);
+        dirLightContribution *= (1.0 - shadow); // Apply shadow to directional light
+        Lo += dirLightContribution;
+    }
 
     // Point Lights
     for (int i = 0; i < NR_POINT_LIGHTS; ++i)

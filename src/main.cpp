@@ -122,6 +122,7 @@ float gravity = 9.8f;
 float initialYPosition = 0.0f;
 
 // Light Properties 
+bool useDirLight = false;
 glm::vec3 direction{ 0.3f, -0.7f, -0.4f };
 glm::vec3 sunLightColor = glm::vec3(5.0f, 4.9f, 4.75f); // Half intensity but same color temperature
 //glm::vec3 sunLightColor = glm::vec3(10.0f, 9.8f, 9.5f); // Slightly warm sunlight
@@ -598,6 +599,7 @@ int main() {
 		activeShader->setBool("useIBL", useIBL);
 
 		// Directional Light
+		glUniform1i(glGetUniformLocation(activeShader->ID, "enableDirLight"), useDirLight ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.direction"), 1, glm::value_ptr(direction));
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.color"), 1, glm::value_ptr(sunLightColor));
 
@@ -825,6 +827,7 @@ int main() {
 		ImGui::DragFloat3("Direction", glm::value_ptr(direction), 0.1f);
 
 		ImGui::Separator();
+		ImGui::Checkbox("Directional Light Toggle", &useDirLight);
 		ImGui::Checkbox("Flaslight Toggle", &useFlashlight);
 		ImGui::Checkbox("Wireframe Toggle", &wireframe);
 
