@@ -59,16 +59,17 @@ uniform bool enableDirLight;
 uniform vec3 camPos;
 uniform PBRMaterial pbrMaterial;
 uniform sampler2D shadowMap;
+uniform float exposure;
 
 // IBL Uniforms
 uniform samplerCube irradianceMap; // Diffuse environment lighting
 uniform samplerCube prefilterMap; // Prefiltered environment map for specular
 uniform sampler2D brdfLUT; // BRDF lookup texture
+uniform float MAX_REFLECTION_LOD; // Max mip level of radiance map calculated from base texture size
 uniform bool useIBL;
 
 // Constants
 const float PI = 3.14159265359;
-const float MAX_REFLECTION_LOD = 0.0; // Depending on mip levels of prefilterMap
 
 // function prototypes
 vec3 getNormalFromMap();
@@ -175,12 +176,11 @@ void main()
     // Combine ambient and reflectance and emission
     vec3 color = ambient + Lo + emission;
 
+    // Apply exposure adjustment
+    color *= exposure;
+
     // HDR Tonemapping
     color = color / (color + vec3(1.0));
-
-    // Apply exposure adjustment
-    // float exposure = 1.0; // Adjust this value as needed (higher = brighter)
-    // color = vec3(1.0) - exp(-color * exposure);
 
     // Gamma correction
     color = pow(color, vec3(1.0/2.2));

@@ -49,8 +49,24 @@ public:
 	}
 };
 
+struct EnvironmentMap
+{
+	std::string name;
+	uint32_t cubemapTexture;
+	uint32_t irradianceMap;
+	uint32_t radianceMap;
+
+	float maxMipLevel;
+	std::string basePath;
+};
+
+void initEnvironmentMaps();
+EnvironmentMap loadEnvironmentMap(const std::string& name, const std::string& basePath);
 uint32_t loadHDRCubemap(std::vector<std::string> faces);
 uint32_t loadBRDF(const std::string& path);
+
+std::vector<EnvironmentMap> environmentMaps;
+int currentEnvironmentIndex = 0;
 
 // Screen 
 int SCR_WIDTH = 2560;
@@ -366,41 +382,8 @@ int main() {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-	// Load HDR Skybox for background
-	std::vector<std::string> faces
-	{
-		"assets/textures/hdrSkybox/px.hdr",
-		"assets/textures/hdrSkybox/nx.hdr",
-		"assets/textures/hdrSkybox/py.hdr",
-		"assets/textures/hdrSkybox/ny.hdr",
-		"assets/textures/hdrSkybox/pz.hdr",
-		"assets/textures/hdrSkybox/nz.hdr",
-	};
-	uint32_t cubemapTexture = loadHDRCubemap(faces);
-
-	// Load cubemaps for IBL 
-	std::vector<std::string> irradianceFaces = {
-		"assets/textures/hdrSkybox/irradiance/posx.hdr",
-		"assets/textures/hdrSkybox/irradiance/negx.hdr",
-		"assets/textures/hdrSkybox/irradiance/posy.hdr",
-		"assets/textures/hdrSkybox/irradiance/negy.hdr",
-		"assets/textures/hdrSkybox/irradiance/posz.hdr",
-		"assets/textures/hdrSkybox/irradiance/negz.hdr"
-	};
-	unsigned int irradianceMap = loadHDRCubemap(irradianceFaces);
-
-	std::vector<std::string> prefilterFaces = {
-		"assets/textures/hdrSkybox/prefilter/posx.hdr",
-		"assets/textures/hdrSkybox/prefilter/negx.hdr",
-		"assets/textures/hdrSkybox/prefilter/posy.hdr",
-		"assets/textures/hdrSkybox/prefilter/negy.hdr",
-		"assets/textures/hdrSkybox/prefilter/posz.hdr",
-		"assets/textures/hdrSkybox/prefilter/negz.hdr"
-	};
-	unsigned int prefilterMap = loadHDRCubemap(prefilterFaces);
-
-	// The BRDF LUT is a 2D texture
-	unsigned int brdfLUTTexture = loadBRDF("assets/textures/hdrSkybox/brdf.png");
+	initEnvironmentMaps();
+	uint32_t brdfLUTTexture = loadBRDF("assets/textures/brdf.png");
 
 	blinnPhongShading.use();
 	blinnPhongShading.setInt("irradianceMap", 6);
@@ -460,6 +443,7 @@ int main() {
 
 	bool drawModel = true;
 	bool useNormalMaps = true;
+	float exposure = 1.0f;
 	LoadModelFolders();
 
 	while (!glfwWindowShouldClose(window))
@@ -644,16 +628,17 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 
 		// Bind IBL textures
+		const EnvironmentMap& currentEnv = environmentMaps[currentEnvironmentIndex];
+
+		activeShader->setFloat("MAX_REFLECTION_LOD", currentEnv.maxMipLevel);
+		activeShader->setFloat("exposure", exposure);
+
 		glActiveTexture(GL_TEXTURE6);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, currentEnv.irradianceMap);
 		glActiveTexture(GL_TEXTURE7);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, currentEnv.radianceMap);
 		glActiveTexture(GL_TEXTURE8);
 		glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-
-		GLint irradianceLoc = glGetUniformLocation(blinnPhongShading.ID, "irradianceMap");
-		GLint prefilterLoc = glGetUniformLocation(blinnPhongShading.ID, "prefilterMap");
-		GLint brdfLoc = glGetUniformLocation(blinnPhongShading.ID, "brdfLUT");
 
 		// Render each model with all its instances
 		for (auto& [modelPtr, transforms] : batchedInstanceData) { 
@@ -690,7 +675,7 @@ int main() {
 
 		glBindVertexArray(skyboxVAO);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, currentEnv.cubemapTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 		glDepthFunc(GL_LESS); // Reset depth function
@@ -707,7 +692,27 @@ int main() {
 		ImGui::Text("Scene Construction");
 		ImGui::Separator();
 
-		if (ImGui::BeginCombo("Select Model", modelFolders[selectedModelIdx].c_str())) {
+		if (ImGui::BeginCombo("Environment", environmentMaps[currentEnvironmentIndex].name.c_str()))
+		{
+			for (size_t i = 0; i < environmentMaps.size(); ++i)
+			{
+				bool isSelected = (currentEnvironmentIndex == i);
+				if (ImGui::Selectable(environmentMaps[i].name.c_str(), isSelected))
+				{
+					currentEnvironmentIndex = i;
+				}
+				if (isSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::BeginCombo("Select Model", modelFolders[selectedModelIdx].c_str())) 
+		{
 			// Iterate through modelFolders and display each item
 			for (int i = 0; i < modelFolders.size(); ++i) {
 				bool isSelected = (selectedModelIdx == i);
@@ -829,6 +834,7 @@ int main() {
 		ImGui::Separator();
 		ImGui::Checkbox("Directional Light Toggle", &useDirLight);
 		ImGui::Checkbox("Flaslight Toggle", &useFlashlight);
+		ImGui::SliderFloat("Exposure", &exposure, 0.1f, 5.0f);
 		ImGui::Checkbox("Wireframe Toggle", &wireframe);
 
 		ImGui::Separator();
@@ -1099,6 +1105,64 @@ void processControllerInput()
 	}
 }
 
+void initEnvironmentMaps()
+{
+	environmentMaps.push_back(loadEnvironmentMap("Snow Field", "assets/textures/snowfield/"));
+	environmentMaps.push_back(loadEnvironmentMap("Grass Field", "assets/textures/grassfield/"));
+}
+
+EnvironmentMap loadEnvironmentMap(const std::string& name, const std::string& basePath)
+{
+	EnvironmentMap envMap;
+	envMap.name = name;
+	envMap.basePath = basePath;
+
+	// Load HDR Skybox for background
+	std::vector<std::string> faces
+	{
+		basePath + "skybox/px.hdr",
+		basePath + "skybox/nx.hdr",
+		basePath + "skybox/py.hdr",
+		basePath + "skybox/ny.hdr",
+		basePath + "skybox/pz.hdr",
+		basePath + "skybox/nz.hdr",
+	};
+	envMap.cubemapTexture = loadHDRCubemap(faces);
+
+	// Load cubemaps for IBL 
+	std::vector<std::string> irradianceFaces = {
+		basePath + "/irradiance/px.hdr",
+		basePath + "/irradiance/nx.hdr",
+		basePath + "/irradiance/py.hdr",
+		basePath + "/irradiance/ny.hdr",
+		basePath + "/irradiance/pz.hdr",
+		basePath + "/irradiance/nz.hdr"
+	};
+	envMap.irradianceMap = loadHDRCubemap(irradianceFaces);
+
+	std::vector<std::string> radianceFaces = {
+		basePath + "/radiance/px.hdr",
+		basePath + "/radiance/nx.hdr",
+		basePath + "/radiance/py.hdr",
+		basePath + "/radiance/ny.hdr",
+		basePath + "/radiance/pz.hdr",
+		basePath + "/radiance/nz.hdr"
+	};
+	envMap.radianceMap = loadHDRCubemap(radianceFaces);
+
+	// Calculate max mip levels for this prefilter map
+	int width, height, nrChannels;
+	float* tempData = stbi_loadf(radianceFaces[0].c_str(), &width, &height, &nrChannels, 0);
+	if (tempData) {
+		envMap.maxMipLevel = static_cast<int>(std::log2(std::max(width, height)));
+		stbi_image_free(tempData);
+	}
+	else {
+		envMap.maxMipLevel = 5; // Default fallback
+	}
+	return envMap;
+}
+
 uint32_t loadHDRCubemap(std::vector<std::string> faces)
 {
 	uint32_t textureID;
@@ -1124,7 +1188,7 @@ uint32_t loadHDRCubemap(std::vector<std::string> faces)
 	}
 
 	// For prefiltered environment map, enable mipmapping
-	if (faces[0].find("prefilter") != std::string::npos)
+	if (faces[0].find("radiance") != std::string::npos)
 	{
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
