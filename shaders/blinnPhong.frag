@@ -176,15 +176,6 @@ void main()
     // Combine ambient and reflectance and emission
     vec3 color = ambient + Lo + emission;
 
-    // Apply exposure adjustment
-    color *= exposure;
-
-    // HDR Tonemapping
-    color = color / (color + vec3(1.0));
-
-    // Gamma correction
-    color = pow(color, vec3(1.0/2.2));
-
     FragColor = vec4(color, 1.0);
 }
 

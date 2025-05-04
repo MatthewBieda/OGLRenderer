@@ -327,6 +327,7 @@ int main() {
 
 	Shader shadowMap("shaders/shadowMap.vert", "shaders/shadowMap.frag");	
 	Shader debugDepthQuad("shaders/debugQuad.vert", "shaders/debugQuad.frag");
+	Shader postShader("shaders/postprocess.vert", "shaders/postprocess.frag");
 
 	float skyboxVertices[] = {
 		// positions          
@@ -422,6 +423,34 @@ int main() {
 
 	debugDepthQuad.use();
 	glUniform1i(glGetUniformLocation(debugDepthQuad.ID, "depthMap"), 0);
+
+	// HDR Framebuffer for Post-Processing
+	uint32_t hdrFBO;
+	glGenFramebuffers(1, &hdrFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+
+	// Create color buffer texture (HDR)
+	uint32_t colorBuffer;
+	glGenTextures(1, &colorBuffer);
+	glBindTexture(GL_TEXTURE_2D, colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+
+	// Create and attach depth buffer (renderbuffer)
+	uint32_t rboDepth;
+	glGenRenderbuffers(1, &rboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+
+	// Check FBO validity
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "Framebuffer incomplete!" << std::endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	//stbi_set_flip_vertically_on_load(true);
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj", false, "lightSource");
@@ -563,6 +592,9 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//2.) Render Scene as normal using the generated depth / shadow map
+		glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		Shader* activeShader;
 		switch(currentShadingMode) 
 		{
@@ -680,6 +712,20 @@ int main() {
 		glBindVertexArray(0);
 		glDepthFunc(GL_LESS); // Reset depth function
 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		glDisable(GL_FRAMEBUFFER_SRGB);
+
+
+		postShader.use();
+		postShader.setFloat("exposure", exposure);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorBuffer);
+		postShader.setInt("hdrBuffer", 0);
+
+		// Full post-process ready quad
+		renderQuad();
+
 		// Render depth map to quad for visual debugging
 		// debugDepthQuad.use();
 		// glUniform1f(glGetUniformLocation(debugDepthQuad.ID, "near_plane"), near_plane);
@@ -762,7 +808,6 @@ int main() {
 				gameObjects.push_back(std::move(obj));
 			}
 			std::cout << "Added " << instanceCount << " instances of " << selectedFolder << std::endl;
-
 		}
 
 		ImGui::Separator();
@@ -1107,8 +1152,7 @@ void processControllerInput()
 
 void initEnvironmentMaps()
 {
-	environmentMaps.push_back(loadEnvironmentMap("Snow Field", "assets/textures/snowfield/"));
-	environmentMaps.push_back(loadEnvironmentMap("Grass Field", "assets/textures/grassfield/"));
+	environmentMaps.push_back(loadEnvironmentMap("Snow Field", "assets/textures/snowfield/"));	
 }
 
 EnvironmentMap loadEnvironmentMap(const std::string& name, const std::string& basePath)
