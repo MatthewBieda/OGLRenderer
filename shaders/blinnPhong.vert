@@ -4,65 +4,46 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
 layout (location = 3) in vec3 aTangent;
 layout (location = 4) in vec3 aBitangent;
-layout (location = 5) in mat4 aInstanceMatrix; // Instance transform matrix
+layout (location = 5) in mat4 aInstanceMatrix;
 
 out vec2 TexCoords;
-out vec3 TangentViewPos;
-out vec3 TangentFragPos;
-out vec3 WorldNormal;
+out vec3 WorldPos;
+out vec3 Normal;
 out vec4 FragPosLightSpace;
-out mat3 TBN_inverse; // TBN inverse for transforming to tangent space
+out mat3 TBN;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 model;
 uniform mat4 lightSpaceMatrix;
-uniform vec3 viewPos;
-uniform vec3 dirLightDirection;
-
-// For point lights
-#define MAX_POINT_LIGHTS 10
-uniform vec3 pointLightPositions[MAX_POINT_LIGHTS];
-uniform int numPointLights;
-
-// For spotlight
-uniform vec3 spotLightPosition;
-uniform vec3 spotLightDirection;
-uniform bool enableSpotLight;
 
 void main()
 {
     // Calculate world position
     vec4 worldPos = aInstanceMatrix * vec4(aPos, 1.0);
-    vec3 worldPosition = worldPos.xyz;
+    WorldPos = worldPos.xyz;
 
-    // Calculate normal, tangent, and bitangent in World space
-    mat3 normalMatrix = mat3(transpose(inverse(aInstanceMatrix))); // Support non-uniform scaling
-    vec3 N = normalize(normalMatrix * aNormal);
+    // Calculate normal in world space (support non-uniform scale)
+    mat3 normalMatrix = mat3(transpose(inverse(aInstanceMatrix))); 
+    Normal = normalize(normalMatrix * aNormal);
+
+    // Calculate TBN matrix for normal mapping
     vec3 T = normalize(normalMatrix * aTangent);
 
     // Re-orthogalize T with respect to N (Gram-Schmidt process)
-    T = normalize(T - dot(T, N) * N);
-    // Then reconstruct B to ensure orthoganal basis
-    vec3 B = cross(N, T);
+    T = normalize(T - dot(T, Normal) * Normal);
+    // Calculate bitangent
+    vec3 B = cross(Normal, T);
 
-    // Create new TBN matrix (world space to tangent space)
-    mat3 TBN = mat3(T, B, N);
-    TBN_inverse = transpose(TBN); // Inverse for transforming World -> Tangent
-
-    // Transform view position to tangent space
-    TangentViewPos = TBN_inverse * viewPos;
-
-    // Transoform fragment position to tangent space
-    TangentFragPos = TBN_inverse * worldPosition;
-
-    // Save world normal for shadow calculations
-    WorldNormal = N;
+    // TBN matrix for transforming from tangent to world space
+    TBN = mat3(T, B, Normal);
 
     // Transform position to light space for shadow mapping
     FragPosLightSpace = lightSpaceMatrix * worldPos;
 
+    // Pass texture co-ordinates
     TexCoords = aTexCoords;
+
+    // Output clip space position
     gl_Position = projection * view * worldPos;
 }
 

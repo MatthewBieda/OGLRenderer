@@ -49,7 +49,31 @@ public:
 	}
 };
 
-unsigned int loadCubemap(std::vector<std::string> faces);
+struct EnvironmentMap
+{
+	std::string name;
+	uint32_t cubemapTexture;
+	uint32_t irradianceMap;
+	uint32_t radianceMap;
+
+	float maxMipLevel;
+	std::string basePath;
+};
+
+void initEnvironmentMaps();
+EnvironmentMap loadEnvironmentMap(const std::string& name, const std::string& basePath);
+uint32_t loadHDRCubemap(std::vector<std::string> faces);
+uint32_t loadBRDF(const std::string& path);
+
+std::vector<EnvironmentMap> environmentMaps;
+int currentEnvironmentIndex = 0;
+
+// Framebuffers
+uint32_t g_hdrFBO;
+uint32_t g_colorBuffer;
+uint32_t g_rboDepth;
+int g_SCR_WIDTH = 2560;
+int g_SCR_HEIGHT = 1440;
 
 // Screen 
 int SCR_WIDTH = 2560;
@@ -120,19 +144,19 @@ float jumpVelocity = 5.0f;
 float gravity = 9.8f;
 float initialYPosition = 0.0f;
 
-// Material properties
-float materialShininess = 32.0f;
-
-// Point Light variables
-float ambientStrength = 0.05f;
-float diffuseStrength = 0.8f;
-float specularStrength = 1.0f;
-
-// Directional light variables
+// Light Properties 
+bool useDirLight = false;
 glm::vec3 direction{ 0.3f, -0.7f, -0.4f };
-float dirAmbient = 0.05f;
-float dirDiffuse = 0.4f;
-float dirSpecular = 0.5f;
+glm::vec3 sunLightColor = glm::vec3(5.0f, 4.9f, 4.75f); // Half intensity but same color temperature
+//glm::vec3 sunLightColor = glm::vec3(10.0f, 9.8f, 9.5f); // Slightly warm sunlight
+// or higher for bright daylight: glm::vec3(20.0f, 19.5f, 19.0f);
+
+glm::vec3 pointLightColor = glm::vec3(5.0f, 4.8f, 4.5f); // Slightly warm indoor light
+// For a warm/yellowish bulb: glm::vec3(5.0f, 4.0f, 2.5f);
+// For a cool/bluish light: glm::vec3(3.0f, 3.5f, 5.0f);
+
+// For flashlight/spotlight
+glm::vec3 spotlightColor = glm::vec3(4.0f); // White light
 
 // Flashlight toggle
 bool useFlashlight = false;
@@ -141,9 +165,19 @@ bool useFlashlight = false;
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 
-// Model folder
-std::vector<std::string> modelFolders;
+// Model loading
+struct ModelEntry
+{
+	std::string folderName;
+	std::string modelFilePath;
+};
+std::vector<ModelEntry> modelFolders;
 static int selectedModelIdx = 0;
+
+// Supported model formats
+const std::unordered_set<std::string> supportedFormats = {
+	".obj", ".gltf", ".glb", ".fbx", ".dae", ".blend", ".3ds", ".ply", ".stl"
+};
 
 // Game object container
 std::vector<GameObject> gameObjects;
@@ -287,8 +321,8 @@ int main() {
 	// configure global state
 	glEnable(GL_DEPTH_TEST);
 
-	// MSAA
-	glEnable(GL_MULTISAMPLE);
+	// More work to implement with framebuffers, not compatible with Clustered Forward or Deferred anway 
+	//glEnable(GL_MULTISAMPLE);
 
 	// Gamma Correction
 	// glEnable(GL_FRAMEBUFFER_SRGB);
@@ -305,6 +339,7 @@ int main() {
 
 	Shader shadowMap("shaders/shadowMap.vert", "shaders/shadowMap.frag");	
 	Shader debugDepthQuad("shaders/debugQuad.vert", "shaders/debugQuad.frag");
+	Shader postShader("shaders/postprocess.vert", "shaders/postprocess.frag");
 
 	float skyboxVertices[] = {
 		// positions          
@@ -360,16 +395,15 @@ int main() {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-	std::vector<std::string> faces
-	{
-		"assets/textures/forest/posx.jpg",
-		"assets/textures/forest/negx.jpg",
-		"assets/textures/forest/posy.jpg",
-		"assets/textures/forest/negy.jpg",
-		"assets/textures/forest/posz.jpg",
-		"assets/textures/forest/negz.jpg",
-	};
-	uint32_t cubemapTexture = loadCubemap(faces);
+	initEnvironmentMaps();
+	uint32_t brdfLUTTexture = loadBRDF("assets/textures/brdf.png");
+
+	blinnPhongShading.use();
+	blinnPhongShading.setInt("irradianceMap", 6);
+	blinnPhongShading.setInt("prefilterMap", 7);
+	blinnPhongShading.setInt("brdfLUT", 8);
+
+	bool useIBL = true;
 
 	// Configure depth map FBO
 	const uint32_t SHADOW_WIDTH = 2048, SHADOW_HEIGHT = 2048;
@@ -402,6 +436,41 @@ int main() {
 	debugDepthQuad.use();
 	glUniform1i(glGetUniformLocation(debugDepthQuad.ID, "depthMap"), 0);
 
+	// HDR Framebuffer for Post-Processing
+	uint32_t hdrFBO;
+	glGenFramebuffers(1, &hdrFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+
+	// Create color buffer texture (HDR)
+	uint32_t colorBuffer;
+	glGenTextures(1, &colorBuffer);
+	glBindTexture(GL_TEXTURE_2D, colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+
+	// Create and attach depth buffer (renderbuffer)
+	uint32_t rboDepth;
+	glGenRenderbuffers(1, &rboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+
+	// Check FBO validity
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "Framebuffer incomplete!" << std::endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Assign to global variables for use in callback
+	g_hdrFBO = hdrFBO;
+	g_colorBuffer = colorBuffer;
+	g_rboDepth = rboDepth;
+	g_SCR_WIDTH = SCR_WIDTH;
+	g_SCR_HEIGHT = SCR_HEIGHT;
+
 	//stbi_set_flip_vertically_on_load(true);
 	Model lightSourceSphere("assets/models/icoSphere/icoSphere.obj", false, "lightSource");
 
@@ -422,6 +491,7 @@ int main() {
 
 	bool drawModel = true;
 	bool useNormalMaps = true;
+	float exposure = 1.0f;
 	LoadModelFolders();
 
 	while (!glfwWindowShouldClose(window))
@@ -541,6 +611,9 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//2.) Render Scene as normal using the generated depth / shadow map
+		glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		Shader* activeShader;
 		switch(currentShadingMode) 
 		{
@@ -553,29 +626,17 @@ int main() {
 		}
 
 		activeShader->use();
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "viewPos"), 1, glm::value_ptr(camera.Position));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "camPos"), 1, glm::value_ptr(camera.Position));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
 
 		// Set Material Properties
-		glUniform1f(glGetUniformLocation(activeShader->ID, "material.shininess"), materialShininess);
 		activeShader->setBool("useNormalMaps", useNormalMaps);
-
-		// Setting Point Light Properties
-		glm::vec3 lightColor(1.0f);
-		glm::vec3 diffuseColor = lightColor * glm::vec3(diffuseStrength);
-		glm::vec3 ambientColor = lightColor * glm::vec3(ambientStrength);
-		glm::vec3 specularColor = glm::vec3(specularStrength);
-
-		// Global attenutation settings
-		float constant = 1.0f;
-		float linear = 0.09f;
-		float quadratic = 0.032f;
+		activeShader->setBool("useIBL", useIBL);
 
 		// Directional Light
+		glUniform1i(glGetUniformLocation(activeShader->ID, "enableDirLight"), useDirLight ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.direction"), 1, glm::value_ptr(direction));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.ambient"), 1, glm::value_ptr(glm::vec3(dirAmbient)));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.diffuse"), 1, glm::value_ptr(glm::vec3(dirDiffuse)));
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.specular"), 1, glm::value_ptr(glm::vec3(dirSpecular)));
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "dirLight.color"), 1, glm::value_ptr(sunLightColor));
 
 		// Point Lights
 		glUniform1i(glGetUniformLocation(activeShader->ID, "NR_POINT_LIGHTS"), pointLightPositions.size());
@@ -584,40 +645,51 @@ int main() {
 			std::string number = std::to_string(i);
 
 			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].position").c_str()), 1, glm::value_ptr(pointLightPositions[i]));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].ambient").c_str()), 1, glm::value_ptr(ambientColor));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].diffuse").c_str()), 1, glm::value_ptr(diffuseColor));
-			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].specular").c_str()), 1, glm::value_ptr(specularColor));
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].constant").c_str()), constant);
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].linear").c_str()), linear);
-			glUniform1f(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].quadratic").c_str()), quadratic);
+			glUniform3fv(glGetUniformLocation(activeShader->ID, ("pointLights[" + number + "].color").c_str()), 1, glm::value_ptr(pointLightColor));
 		}
 
 		// Spot light
 		glUniform1i(glGetUniformLocation(activeShader->ID, "enableSpotLight"), useFlashlight ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.position"), 1, glm::value_ptr(camera.Position));
 		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.direction"), 1, glm::value_ptr(camera.Front));
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
-		glUniform3f(glGetUniformLocation(activeShader->ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.constant"), constant);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.linear"), linear);
-		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.quadratic"), quadratic);
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "spotLight.color"), 1, glm::value_ptr(spotlightColor));
 		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
 		glUniform1f(glGetUniformLocation(activeShader->ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
 
 		// View / Projection transformations
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)g_SCR_WIDTH / (float)g_SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(activeShader->ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-		glm::vec3 defaultColor{ 0.8f,0.8f,0.8f };
-		glUniform3fv(glGetUniformLocation(activeShader->ID, "defaultColor"), 1, glm::value_ptr(defaultColor));
+		// Default PBR values
+		glm::vec3 defaultAlbedo = glm::vec3(0.8f);
+		float defaultMetallic = 0.0f;
+		float defaultRoughness = 0.5;
+		float defaultAO = 1.0f;
 
-		// Use higher texture unit to not overlap Diffuse and Specular
+		glUniform3fv(glGetUniformLocation(activeShader->ID, "defaultAlbedo"), 1, glm::value_ptr(defaultAlbedo));
+		activeShader->setFloat("defaultMetallic", defaultMetallic);
+		activeShader->setFloat("defaultRoughness", defaultRoughness);
+		activeShader->setFloat("defaultAO", defaultAO);
+
+		// Use texture unit 5 for shadow map to allow room for albedo/normals/metallic/roughness/ao
 		glUniform1i(glGetUniformLocation(activeShader->ID, "shadowMap"), 5);
 		glActiveTexture(GL_TEXTURE5);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
+
+		// Bind IBL textures
+		const EnvironmentMap& currentEnv = environmentMaps[currentEnvironmentIndex];
+
+		activeShader->setFloat("MAX_REFLECTION_LOD", currentEnv.maxMipLevel);
+		activeShader->setFloat("exposure", exposure);
+
+		glActiveTexture(GL_TEXTURE6);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, currentEnv.irradianceMap);
+		glActiveTexture(GL_TEXTURE7);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, currentEnv.radianceMap);
+		glActiveTexture(GL_TEXTURE8);
+		glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
 		// Render each model with all its instances
 		for (auto& [modelPtr, transforms] : batchedInstanceData) { 
@@ -654,10 +726,21 @@ int main() {
 
 		glBindVertexArray(skyboxVAO);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, currentEnv.cubemapTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 		glDepthFunc(GL_LESS); // Reset depth function
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		postShader.use();
+		postShader.setFloat("exposure", exposure);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorBuffer);
+		postShader.setInt("hdrBuffer", 0);
+
+		// Full post-process ready quad
+		renderQuad();
 
 		// Render depth map to quad for visual debugging
 		// debugDepthQuad.use();
@@ -671,19 +754,42 @@ int main() {
 		ImGui::Text("Scene Construction");
 		ImGui::Separator();
 
-		if (ImGui::BeginCombo("Select Model", modelFolders[selectedModelIdx].c_str())) {
+		if (ImGui::BeginCombo("Environment", environmentMaps[currentEnvironmentIndex].name.c_str()))
+		{
+			for (size_t i = 0; i < environmentMaps.size(); ++i)
+			{
+				bool isSelected = (currentEnvironmentIndex == i);
+				if (ImGui::Selectable(environmentMaps[i].name.c_str(), isSelected))
+				{
+					currentEnvironmentIndex = i;
+				}
+				if (isSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::BeginCombo("Select Model", modelFolders[selectedModelIdx].folderName.c_str())) 
+		{
 			// Iterate through modelFolders and display each item
 			for (int i = 0; i < modelFolders.size(); ++i) {
 				bool isSelected = (selectedModelIdx == i);
-				if (ImGui::Selectable(modelFolders[i].c_str(), isSelected)) {
+				if (ImGui::Selectable(modelFolders[i].folderName.c_str(), isSelected)) {
 					selectedModelIdx = i;  // Update the selection
+				}
+				if (isSelected)
+				{
+					ImGui::SetItemDefaultFocus();
 				}
 			}
 			ImGui::EndCombo();
 		}
 
 		static int instanceCount = 1;
-
 		ImGui::InputInt("Instances to Add", &instanceCount);
 		if (instanceCount < 1) 
 		{
@@ -692,12 +798,15 @@ int main() {
 
 		// Update your "Add Model" button handler
 		if (ImGui::Button("Add Model")) {
-			std::string selectedFolder = modelFolders[selectedModelIdx];
-			std::string modelPath = "assets/models/" + selectedFolder + "/" + selectedFolder + ".obj";
+			ModelEntry& selectedModel = modelFolders[selectedModelIdx];
+			std::string selectedFolder = selectedModel.folderName;
+			std::string modelPath = selectedModel.modelFilePath;
+			std::replace(modelPath.begin(), modelPath.end(), '\\', '/');
+
+			std::cout << selectedFolder << " " << modelPath << std::endl;
 
 			// Check if we already have this model in cache
 			std::shared_ptr<Model> modelPtr;
-
 			if (modelCache.find(selectedFolder) == modelCache.end()) {
 				// Create new model and add to cache
 				modelPtr = std::make_shared<Model>(modelPath, false, selectedFolder);
@@ -711,23 +820,18 @@ int main() {
 			}
 
 			// Add multiple GameObjects
-			int gridSize = static_cast<int>(std::sqrt(instanceCount)); // e.g. 10 for 100 instances
+			int gridSize = static_cast<int>(std::sqrt(instanceCount));
 			float spacing = 2.5f; 
 
 			for (int i = 0; i < instanceCount; ++i) {
 				std::string objName = selectedFolder + "_" + std::to_string(gameObjects.size());
-
 				GameObject obj(modelPtr, objName);
-
 				int row = i / gridSize;
 				int col = i % gridSize;
-
 				obj.position = glm::vec3(col * spacing, 0.0f, row * spacing);
-
 				gameObjects.push_back(std::move(obj));
 			}
 			std::cout << "Added " << instanceCount << " instances of " << selectedFolder << std::endl;
-
 		}
 
 		ImGui::Separator();
@@ -763,14 +867,7 @@ int main() {
 		ImGui::Checkbox("Enable Normals Maps", &useNormalMaps);
 
 		ImGui::Separator();
-		ImGui::Text("Specular Exponent");
-		ImGui::SliderFloat("Shininess", &materialShininess, 1.0f, 256.0f);
-
-		ImGui::Separator();
-		ImGui::Text("Point Light Properties");
-		ImGui::SliderFloat("Ambient Strength", &ambientStrength, 0.0f, 1.0f);
-		ImGui::SliderFloat("Diffuse Strength", &diffuseStrength, 0.0f, 1.0f);
-		ImGui::SliderFloat("Specular Strength", &specularStrength, 0.0f, 1.0f);
+		ImGui::Checkbox("Enable IBL", &useIBL);
 
 		ImGui::Separator();
 		ImGui::Text("Active Point Lights: %zu/%d", pointLightPositions.size(), MAX_POINT_LIGHTS);
@@ -783,7 +880,7 @@ int main() {
 		}
 
 		ImGui::SameLine();
-		if (ImGui::Button("Remove Light"))
+		if (ImGui::Button("Remove Light") && !pointLightPositions.empty())
 		{
 			pointLightPositions.pop_back();
 		}
@@ -802,12 +899,11 @@ int main() {
 		ImGui::Separator();
 		ImGui::Text("Directional Light Properties");
 		ImGui::DragFloat3("Direction", glm::value_ptr(direction), 0.1f);
-		ImGui::SliderFloat("Directional Ambient", &dirAmbient, 0.0f, 1.0f);
-		ImGui::SliderFloat("Directional Diffuse", &dirDiffuse, 0.0f, 1.0f);
-		ImGui::SliderFloat("Directional Specular", &dirSpecular, 0.0f, 1.0f);
 
 		ImGui::Separator();
+		ImGui::Checkbox("Directional Light Toggle", &useDirLight);
 		ImGui::Checkbox("Flaslight Toggle", &useFlashlight);
+		ImGui::SliderFloat("Exposure", &exposure, 0.1f, 5.0f);
 		ImGui::Checkbox("Wireframe Toggle", &wireframe);
 
 		ImGui::Separator();
@@ -962,6 +1058,23 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	SCR_WIDTH = width;
 	SCR_HEIGHT = height;
 	glViewport(0, 0, width, height);
+
+	// Resize HDR framebuffer textures
+	glBindTexture(GL_TEXTURE_2D, g_colorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+
+	// Resize depth renderbuffer
+	glBindRenderbuffer(GL_RENDERBUFFER, g_rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+	// Check FBO status after resize
+	glBindFramebuffer(GL_FRAMEBUFFER, g_hdrFBO);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "Framebuffer incomplete after resize!" << std::endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 void SetDisplayMode(GLFWwindow* window, DisplayMode mode)
@@ -1078,7 +1191,65 @@ void processControllerInput()
 	}
 }
 
-uint32_t loadCubemap(std::vector<std::string> faces)
+void initEnvironmentMaps()
+{
+	environmentMaps.push_back(loadEnvironmentMap("Snow Field", "assets/textures/snowfield/"));	
+	environmentMaps.push_back(loadEnvironmentMap("Warm Bar", "assets/textures/warmbar/"));	
+}
+
+EnvironmentMap loadEnvironmentMap(const std::string& name, const std::string& basePath)
+{
+	EnvironmentMap envMap;
+	envMap.name = name;
+	envMap.basePath = basePath;
+
+	// Load HDR Skybox for background
+	std::vector<std::string> faces
+	{
+		basePath + "skybox/px.hdr",
+		basePath + "skybox/nx.hdr",
+		basePath + "skybox/py.hdr",
+		basePath + "skybox/ny.hdr",
+		basePath + "skybox/pz.hdr",
+		basePath + "skybox/nz.hdr",
+	};
+	envMap.cubemapTexture = loadHDRCubemap(faces);
+
+	// Load cubemaps for IBL 
+	std::vector<std::string> irradianceFaces = {
+		basePath + "/irradiance/px.hdr",
+		basePath + "/irradiance/nx.hdr",
+		basePath + "/irradiance/py.hdr",
+		basePath + "/irradiance/ny.hdr",
+		basePath + "/irradiance/pz.hdr",
+		basePath + "/irradiance/nz.hdr"
+	};
+	envMap.irradianceMap = loadHDRCubemap(irradianceFaces);
+
+	std::vector<std::string> radianceFaces = {
+		basePath + "/radiance/px.hdr",
+		basePath + "/radiance/nx.hdr",
+		basePath + "/radiance/py.hdr",
+		basePath + "/radiance/ny.hdr",
+		basePath + "/radiance/pz.hdr",
+		basePath + "/radiance/nz.hdr"
+	};
+	envMap.radianceMap = loadHDRCubemap(radianceFaces);
+
+	// Calculate max mip levels for this prefilter map
+	int width, height, nrChannels;
+	float* tempData = stbi_loadf(radianceFaces[0].c_str(), &width, &height, &nrChannels, 0);
+	if (tempData) {
+		envMap.maxMipLevel = static_cast<int>(std::log2(std::max(width, height)));
+		stbi_image_free(tempData);
+	}
+	else {
+		envMap.maxMipLevel = 5; // Default fallback
+	}
+	return envMap;
+}
+
+uint32_t loadHDRCubemap(std::vector<std::string> faces)
 {
 	uint32_t textureID;
 	glGenTextures(1, &textureID);
@@ -1087,23 +1258,80 @@ uint32_t loadCubemap(std::vector<std::string> faces)
 	int width, height, nrChannels;
 	for (uint32_t i = 0; i < faces.size(); ++i)
 	{
-		uint8_t* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+		float* data = stbi_loadf(faces[i].c_str(), &width, &height, &nrChannels, 0);
 		if (data)
 		{
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			// Use appropriate format based on channels
+			GLenum format = nrChannels == 3 ? GL_RGB : GL_RGBA;
+
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, width, height, 0, format, GL_FLOAT, data);
 			stbi_image_free(data);
 		}
 		else
 		{
-			std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-			stbi_image_free(data);
+			std::cout << "HDR Cubemap texture failed to load at path: " << faces[i] << std::endl;
 		}
 	}
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	// For prefiltered environment map, enable mipmapping
+	if (faces[0].find("radiance") != std::string::npos)
+	{
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	}
+	else 
+	{
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	}
+
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
+
+// For standard 2D textures (BRDF LUT)
+uint32_t loadBRDF(const std::string& path)
+{
+	uint32_t textureID;
+	glGenTextures(1, &textureID);
+
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		GLenum format {};
+		GLenum internalFormat {};
+		if (nrChannels == 1) {
+			format = GL_RED;
+			internalFormat = GL_RED;
+		}
+		else if (nrChannels == 3) {
+			format = GL_RGB;
+			internalFormat = GL_RGB;
+		}
+		else if (nrChannels == 4) {
+			format = GL_RGBA;
+			internalFormat = GL_RGBA;
+		}
+
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+	}
+	else
+	{
+		std::cout << "BRDF LUT failed to load at path: " << path << std::endl;
+	}
 
 	return textureID;
 }
@@ -1148,22 +1376,16 @@ void LoadModelFolders()
 		{
 			for (const auto& file : std::filesystem::directory_iterator(entry.path()))
 			{
-				if (file.path().extension() == ".obj") 
+				std::string ext = file.path().extension().string();
+				if (supportedFormats.contains(ext))
 				{
-					modelFolders.push_back(entry.path().filename().string());
+					modelFolders.push_back({
+						entry.path().filename().string(), // Folder name
+						file.path().string()			  // Full model file path
+					});
 					break;
 				}
 			}
 		}
 	}
 }
-
-//TODO
-//Move constant light direction transformations to the vertex shader:
-
-//Transform directional light direction once
-//Transform spotlight direction once
-//Pass as varyings to the fragment shader
-
-
-//Consider transforming point light positions in the vertex shader too (if you have only a few points lights)

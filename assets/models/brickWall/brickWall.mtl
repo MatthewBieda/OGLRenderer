@@ -11,3 +11,5 @@ d 1.000000
 illum 2
 map_Kd red_brick_diff_4k.png
 map_Bump red_brick_nor_gl_4k.png
+map_Pr red_brick_rough_4k.png
+map_Ka red_brick_ao_4k.png

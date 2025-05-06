@@ -39,10 +39,13 @@
 ## Version 2
 - Physically Based Materials and Lighting (Cook-Torrance)
 - HDR/Tone Mapping/Gamma Correction
+- Image Based Lighting
+
+I used PolyHaven to get the HDRI, CMFTStudio to bake the diffuse irradiance and prefilter maps in linear space, and IBLBaker to get the Smith BRDF LUT. Also used HDRI-to-CubeMap web utility to make the skybox. Loaded everything in as HDR with stb_image, except the LUT is just a PNG, then tonemapped and gamma corrected at the end. Made sure to parse Albedo and Emissive as sRGB also (hardware applies linear space transformation).
+
 - Deferred Rendering
 - Cascading Shadow Maps
 - Bloom/SSAO/Reflections
-- Image Based Lighting
 - Skeletal Animations
 - Spotlight & Point Light Shadows (Omnidirectional)
 - Transparency

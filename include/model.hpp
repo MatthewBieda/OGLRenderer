@@ -6,7 +6,7 @@
 #include "mesh.hpp"
 #include "shader.hpp"
 
-uint32_t TextureFromFile(const std::string& path, const std::string& directory, bool gamma = false);
+uint32_t TextureFromFile(const std::string& path, const std::string& directory, TextureType type);
 
 struct Model
 {
