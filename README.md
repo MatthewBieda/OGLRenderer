@@ -36,13 +36,17 @@
 
 [![OGLRenderer v1.7](https://img.youtube.com/vi/PC8fdYX1EY8/0.jpg)](https://www.youtube.com/watch?v=PC8fdYX1EY8)
 
-## Version 2
+## Version 1.8
 - Physically Based Materials and Lighting (Cook-Torrance)
 - HDR/Tone Mapping/Gamma Correction
 - Image Based Lighting
+- Post-processing pipeline (with exposure implemented)
 
 I used PolyHaven to get the HDRI, CMFTStudio to bake the diffuse irradiance and prefilter maps in linear space, and IBLBaker to get the Smith BRDF LUT. Also used HDRI-to-CubeMap web utility to make the skybox. Loaded everything in as HDR with stb_image, except the LUT is just a PNG, then tonemapped and gamma corrected at the end. Made sure to parse Albedo and Emissive as sRGB also (hardware applies linear space transformation).
 
+[![OGLRenderer v1.8](https://img.youtube.com/vi/3YBZGUKh1Uo/0.jpg)](https://www.youtube.com/watch?v=3YBZGUKh1Uo)
+
+## Version 2
 - Deferred Rendering
 - Cascading Shadow Maps
 - Bloom/SSAO/Reflections
@@ -63,13 +67,16 @@ I used PolyHaven to get the HDRI, CMFTStudio to bake the diffuse irradiance and 
 
 # Build Instructions
 
+If you want to develop and are using Visual Studio, the easiest way to get started is just right-click in the working directory and select "Open with Visual Studio". 
+
+If you just want to build an executable and test the program:
 - Install the latest CMake version from the official website
 - Run the following from the command line in project root directory
 - cmake -S . -B build -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 - cmake --build build --config Release
 - Move the .exe file into root of project
 
-Builds tested on Arch Linux (GNU) and Windows 11 (MSVC)
+Builds tested on Arch Linux (GNU) and Windows 11 (MSVC).
 
 # Usage Instructions
 
