@@ -6,6 +6,7 @@
 
 #include "mesh.hpp"
 #include "model.hpp"
+#include "physics.hpp"
 
 std::unordered_map<std::string, int> Model::modelNameCount;
 
@@ -80,6 +81,7 @@ void Model::Draw(Shader& shader, size_t instanceCount) const
 
 void Model::loadModel(std::string_view path)
 {
+
 	// Read file via ASSIMP
 	Assimp::Importer importer;
 	const aiScene* scene = importer.ReadFile(
@@ -119,6 +121,48 @@ void Model::loadModel(std::string_view path)
 	{
 		mesh.setupMesh(instanceVBO);
 	}
+
+	/*
+	// Find extent for Jolt bounding box collision mesh
+	glm::vec3 minPos(FLT_MAX);
+	glm::vec3 maxPos(-FLT_MAX);
+
+	for (const Mesh& mesh: meshes)
+	{
+	    for (const Vertex& v: mesh.vertices)
+	    {
+		minPos = glm::min(minPos, v.Position);
+		maxPos = glm::max(maxPos, v.Position);
+	    }
+	}
+
+	if (minPos.x == FLT_MAX) {
+	    std::cerr << "Could not compute valid bounding box." << std::endl;
+	    return;
+	}
+
+	glm::vec3 center = (minPos + maxPos) * 0.5f;
+	glm::vec3 halfExtent = (maxPos - minPos) * 0.5f;
+
+	// Convert to JPH::Vec3
+	JPH::Vec3 jCenter(center.x, center.y, center.z);
+	JPH::Vec3 jHalfExtent(halfExtent.x, halfExtent.y, halfExtent.z);
+
+	// Create BoxShape
+	JPH::BoxShapeSettings boxSettings(jHalfExtent);
+	JPH::ShapeSettings::ShapeResult result = boxSettings.Create();
+
+	JPH::BodyCreationSettings bodySettings(
+	    result.Get(), // shape
+	    JPH::RVec3(jCenter.GetX(), jCenter.GetY(), jCenter.GetZ()), // position
+	    JPH::Quat::sIdentity(), // rotation
+	    JPH::EMotionType::Dynamic, // layer
+	    0 //layer
+	);
+
+	JPH::Body* body = physicsSystem->GetBodyInterface().CreateBody(bodySettings);
+	physicsSystem->GetBodyInterface().AddBody(body->GetID(), JPH::EActivation::Activate);
+	*/
 }
 
 void Model::processNode(aiNode* node, const aiScene *scene)

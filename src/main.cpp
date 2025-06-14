@@ -14,11 +14,12 @@
 #include "shader.hpp"
 #include "camera.hpp"
 #include "model.hpp"
+#include "physics.hpp"
 
 #include <iostream>
 #include <array>
-#include <filesystem>
 
+#include <filesystem>
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
@@ -29,24 +30,159 @@ void LoadModelFolders();
 
 class GameObject {
 public:
-	std::shared_ptr<Model> model;  // Using shared_ptr for better memory management
-	glm::vec3 position = { 0, 0, 0 };
-	glm::vec3 rotation = { 0, 0, 0 };
-	float scale = 1.0f;
-	bool visible = true;
-	std::string name;
+    std::shared_ptr<Model> model;
+    glm::vec3 position = { 0, 0, 0 };
+    glm::vec3 rotation = { 0, 0, 0 };
+    float scale = 1.0f;
+    bool visible = true;
+    std::string name;
+    
+    // Physics integration
+    JPH::BodyID physicsBodyID;
+    bool hasPhysics = false;
+    JPH::EMotionType physicsType = JPH::EMotionType::Static;
+    glm::vec3 physicsHalfExtents = glm::vec3(1, 1, 1);
+    
+    // Constructor with automatic physics option
+    GameObject(std::shared_ptr<Model> model, const std::string& name, 
+               bool createPhysics = false, JPH::EMotionType motionType = JPH::EMotionType::Static) 
+        : model(model), name(name), physicsBodyID(), physicsType(motionType)
+    {
+        if (createPhysics && model) {
+            // Auto-calculate bounding box from model
+            CalculatePhysicsFromModel();
+            CreatePhysicsBody(motionType, physicsHalfExtents);
+        }
+    }
+    
+    // Calculate physics bounds from model geometry
+    void CalculatePhysicsFromModel() {
+        if (!model || model->meshes.empty()) {
+            physicsHalfExtents = glm::vec3(1, 1, 1); // Default
+            return;
+        }
+        
+        glm::vec3 minPos(FLT_MAX);
+        glm::vec3 maxPos(-FLT_MAX);
+        
+        for (const auto& mesh : model->meshes) {
+            for (const auto& vertex : mesh.vertices) {
+                minPos = glm::min(minPos, vertex.Position);
+                maxPos = glm::max(maxPos, vertex.Position);
+            }
+        }
+        
+        if (minPos.x != FLT_MAX) {
+            glm::vec3 size = (maxPos - minPos) * 0.5f;
+            physicsHalfExtents = size;
+            std::cout << "Auto-calculated physics bounds for " << name << ": " 
+                      << size.x << ", " << size.y << ", " << size.z << std::endl;
+        }
+    }
+    
+    // Toggle physics on/off (useful for ImGui)
+    void SetPhysicsEnabled(bool enabled) {
+        if (enabled && !hasPhysics) {
+            if (physicsHalfExtents == glm::vec3(0)) {
+                CalculatePhysicsFromModel();
+            }
+            CreatePhysicsBody(physicsType, physicsHalfExtents);
+        } else if (!enabled && hasPhysics) {
+            RemovePhysicsBody();
+        }
+    }
+    
+    // Remove physics body
+    void RemovePhysicsBody() {
+        if (hasPhysics && physicsSystem) {
+            physicsSystem->GetBodyInterface().RemoveBody(physicsBodyID);
+            physicsSystem->GetBodyInterface().DestroyBody(physicsBodyID);
+            hasPhysics = false;
+            std::cout << "Removed physics body for " << name << std::endl;
+        }
+    }
+    
+    // Create physics body (your existing function)
+    void CreatePhysicsBody(JPH::EMotionType motionType = JPH::EMotionType::Static, 
+                          const glm::vec3& halfExtents = glm::vec3(1, 1, 1))
+    {
+        if (!physicsSystem || hasPhysics) return;
+        
+        physicsType = motionType;
+        physicsHalfExtents = halfExtents;
 
-	GameObject(std::shared_ptr<Model> model, const std::string& name) : model(model), name(name) {}
+	// Apply scale to physics bounds
+	glm::vec3 scaledExtents = halfExtents * scale;
+	JPH::BoxShapeSettings shapeSettings(JPH::Vec3(scaledExtents.x, scaledExtents.y, scaledExtents.z));
+        JPH::ShapeSettings::ShapeResult result = shapeSettings.Create();
+        
+        if (result.HasError()) {
+            std::cerr << "Failed to create physics shape for " << name << std::endl;
+            return;
+        }
+        
+        JPH::BodyCreationSettings bodySettings(
+            result.Get(),
+            JPH::RVec3(position.x, position.y, position.z),
+            JPH::Quat::sIdentity(),
+            motionType,
+            motionType == JPH::EMotionType::Static ? Layers::NON_MOVING : Layers::MOVING
+        );
+        
+        JPH::Body* body = physicsSystem->GetBodyInterface().CreateBody(bodySettings);
+        if (!body) {
+            std::cerr << "Failed to create physics body for " << name << std::endl;
+            return;
+        }
+        
+        physicsBodyID = body->GetID();
+        physicsSystem->GetBodyInterface().AddBody(physicsBodyID, 
+            motionType == JPH::EMotionType::Static ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
+        
+        hasPhysics = true;
+        std::cout << "Created physics body for " << name << std::endl;
+    }
+    
+    // Your existing UpdateFromPhysics and UpdateToPhysics functions...
+    void UpdateFromPhysics() {
+        if (!hasPhysics || !physicsSystem) return;
+        
+        JPH::BodyInterface& bodyInterface = physicsSystem->GetBodyInterface();
+        JPH::RVec3 pos = bodyInterface.GetCenterOfMassPosition(physicsBodyID);
+        JPH::Quat rot = bodyInterface.GetRotation(physicsBodyID);
+        
+        position = glm::vec3(pos.GetX(), pos.GetY(), pos.GetZ());
+        glm::quat glmQuat(rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ());
+        glm::vec3 euler = glm::eulerAngles(glmQuat);
+        rotation = glm::degrees(euler);
+    }
 
-	glm::mat4 getTransformMatrix() const {
-		glm::mat4 transform(1.0f);
-		transform = glm::translate(transform, position);
-		transform = glm::rotate(transform, glm::radians(rotation.x), glm::vec3(1, 0, 0));
-		transform = glm::rotate(transform, glm::radians(rotation.y), glm::vec3(0, 1, 0));
-		transform = glm::rotate(transform, glm::radians(rotation.z), glm::vec3(0, 0, 1));
-		transform = glm::scale(transform, glm::vec3(scale));
-		return transform;
-	}
+    // Update physics from GameObject (for manually moving objects)
+    void UpdateToPhysics()
+    {
+        if (!hasPhysics || !physicsSystem) return;
+        
+        JPH::BodyInterface& bodyInterface = physicsSystem->GetBodyInterface();
+        
+        // Convert rotation to quaternion
+        glm::quat glmQuat = glm::quat(glm::radians(rotation));
+        JPH::Quat joltQuat(glmQuat.x, glmQuat.y, glmQuat.z, glmQuat.w);
+        
+        // Update physics body
+        bodyInterface.SetPosition(physicsBodyID, 
+            JPH::RVec3(position.x, position.y, position.z), JPH::EActivation::Activate);
+        bodyInterface.SetRotation(physicsBodyID, joltQuat, JPH::EActivation::Activate);
+    }
+
+    glm::mat4 getTransformMatrix() const {
+        glm::mat4 transform(1.0f);
+        transform = glm::translate(transform, position);
+        transform = glm::rotate(transform, glm::radians(rotation.x), glm::vec3(1, 0, 0));
+        transform = glm::rotate(transform, glm::radians(rotation.y), glm::vec3(0, 1, 0));
+        transform = glm::rotate(transform, glm::radians(rotation.z), glm::vec3(0, 0, 1));
+        transform = glm::scale(transform, glm::vec3(scale));
+        return transform;
+    }
 };
 
 struct EnvironmentMap
@@ -333,6 +469,10 @@ int main() {
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
+	InitJolt();
+        physicsSystem->SetGravity(JPH::Vec3(0, -9.81f, 0));
+	float physicsTimeStep = 1.0f / 60.0f;
+
 	Shader blinnPhongShading("shaders/blinnPhong.vert", "shaders/blinnPhong.frag");
 	Shader lightSource("shaders/lightSource.vert", "shaders/lightSource.frag");
 	Shader skyboxShader("shaders/skybox.vert", "shaders/skybox.frag");
@@ -512,7 +652,7 @@ int main() {
 		processControllerInput();
 		processInput(window);
 
-		// Physics update
+		// Camera update
 		if (isJumping)
 		{
 			// Apply velocity to position
@@ -526,6 +666,16 @@ int main() {
 			{
 				camera.Position.y = initialYPosition;
 				isJumping = false;
+			}
+		}
+
+		physicsSystem->Update(physicsTimeStep, 1, tempAllocator, jobSystem);
+
+		// Update all GameObjects from physics
+		for (auto& obj : gameObjects) {
+			// Only update from physics if it's a dynamic body that physics is controlling
+			if (obj.hasPhysics && obj.physicsType == JPH::EMotionType::Dynamic) {
+				obj.UpdateFromPhysics();
 			}
 		}
 
@@ -845,15 +995,82 @@ int main() {
 				ImGui::PushID(i);
 				if (ImGui::TreeNode(obj.name.c_str()))
 				{
+					// Basic Properties
 					ImGui::Checkbox("Visible", &obj.visible);
 					ImGui::SliderFloat("Scale", &obj.scale, 0.01f, 2.0f);
-					ImGui::DragFloat3("Position", glm::value_ptr(obj.position), 0.1f);
-					ImGui::SliderFloat("Rotation X", &obj.rotation.x, 0.0f, 360.0f);
-					ImGui::SliderFloat("Rotation Y", &obj.rotation.y, 0.0f, 360.0f);
-					ImGui::SliderFloat("Rotation Z", &obj.rotation.z, 0.0f, 360.0f);
+
+					// Position and rotation with physics sync
+					bool transformChanged = false;
+					transformChanged |= ImGui::DragFloat3("Position", glm::value_ptr(obj.position), 0.1f);
+					transformChanged |= ImGui::SliderFloat("Rotation X", &obj.rotation.x, 0.0f, 360.0f);
+					transformChanged |= ImGui::SliderFloat("Rotation Y", &obj.rotation.y, 0.0f, 360.0f);
+					transformChanged |= ImGui::SliderFloat("Rotation Z", &obj.rotation.z, 0.0f, 360.0f);
+					
+					// If transform changed and has physics, update physics body
+					if (transformChanged && obj.hasPhysics) {
+						obj.UpdateToPhysics();
+					}
+
+					ImGui::Separator();
+					
+					// Physics controls
+					ImGui::Text("Physics");
+					bool wasEnabled = obj.hasPhysics;
+					bool physicsEnabled = obj.hasPhysics;
+					
+					if (ImGui::Checkbox("Enable Physics", &physicsEnabled)) {
+						obj.SetPhysicsEnabled(physicsEnabled);
+					}
+					
+					if (obj.hasPhysics) {
+						// Motion type selection
+						const char* motionTypes[] = { "Static", "Kinematic", "Dynamic" };
+						int currentType = (int)obj.physicsType;
+						if (ImGui::Combo("Motion Type", &currentType, motionTypes, 3)) {
+							obj.RemovePhysicsBody();
+							obj.CreatePhysicsBody((JPH::EMotionType)currentType, obj.physicsHalfExtents);
+						}
+						
+						// Physics bounds adjustment
+						if (ImGui::DragFloat3("Physics Half Extents", glm::value_ptr(obj.physicsHalfExtents), 0.1f, 0.1f, 100.0f)) {
+							obj.RemovePhysicsBody();
+							obj.CreatePhysicsBody(obj.physicsType, obj.physicsHalfExtents);
+						}
+						
+						// Utility buttons
+						if (ImGui::Button("Auto-Calculate Bounds")) {
+							obj.CalculatePhysicsFromModel();
+							obj.RemovePhysicsBody();
+							obj.CreatePhysicsBody(obj.physicsType, obj.physicsHalfExtents);
+						}
+						
+						ImGui::SameLine();
+						if (ImGui::Button("Reset Physics")) {
+							obj.UpdateToPhysics(); // Reset to current transform
+						}
+						
+						// Physics info (read-only)
+						if (obj.physicsType == JPH::EMotionType::Dynamic) {
+							ImGui::Text("Physics Status: Dynamic (affected by gravity)");
+						} else if (obj.physicsType == JPH::EMotionType::Static) {
+							ImGui::Text("Physics Status: Static (immovable)");
+						} else {
+							ImGui::Text("Physics Status: Kinematic (manually controlled)");
+						}
+					}
+					
+					ImGui::Separator();
+					
 
 					// Remove Button for each GameObject
-					if (ImGui::Button("Remove GameObject")) {
+					if (ImGui::Button("Remove GameObject")) 
+					{
+						// Clean up physics if it exists
+						if (obj.hasPhysics) 
+						{
+							obj.RemovePhysicsBody();
+						}
+
 						gameObjects.erase(gameObjects.begin() + i);
 						i--; // Adjust index since we removed an element
 					}
@@ -967,6 +1184,8 @@ int main() {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+
+	ShutdownJolt();
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
@@ -1389,3 +1608,5 @@ void LoadModelFolders()
 		}
 	}
 }
+
+

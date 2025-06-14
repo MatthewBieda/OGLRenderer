@@ -84,6 +84,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(stb)
 
+# Include Jolt
+FetchContent_Declare(
+        JoltPhysics
+        GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics"
+        GIT_TAG "v5.3.0"
+		SOURCE_SUBDIR "Build"
+)
+FetchContent_MakeAvailable(JoltPhysics)
+
 # ==========================
 # Include Project Files
 # ==========================
@@ -93,6 +102,7 @@ add_executable(OGLRenderer
     src/mesh.cpp
     src/model.cpp
     src/shader.cpp
+    src/physics.cpp
 
     # ImGui core files
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -115,12 +125,14 @@ target_include_directories(OGLRenderer PRIVATE
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${stb_SOURCE_DIR}
+    ${joltphysics_SOURCE_DIR}/Jolt
+    ${joltphysics_SOURCE_DIR}/Build
 )
 
 # ==========================
 # Link Libraries
 # ==========================
-target_link_libraries(OGLRenderer PRIVATE glfw glad glm assimp)
+target_link_libraries(OGLRenderer PRIVATE glfw glad glm assimp Jolt)
 
 # Enable Multi-Core Compilation for Faster Builds
 if (MSVC)
