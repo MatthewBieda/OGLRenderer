@@ -1,4 +1,12 @@
-# 3D Rendering Engine Development Roadmap
+**OGLRenderer Achievements:**
+
+- Physically Based Rendering (PBR) with Cook-Torrance BRDF, full glTF 2.0 material/texture support
+- Dynamic lighting & shadows: directional (sun), point, and spot lights with PCF shadow maps for sunlight
+- Image Based Lighting (IBL): skyboxes, HDR environment maps, irradiance & prefiltered radiance, BRDF LUT
+- Post-processing pipeline: HDR tone mapping, gamma correction, MSAA, exposure
+- Scene editor: Free camera, Instanced model loading, runtime editing through ImGui interface
+
+# Development Roadmap
 
 ## Version 1
 - Phong Lighting (Phong & Blinn-Phong)
@@ -45,25 +53,6 @@
 I used PolyHaven to get the HDRI, CMFTStudio to bake the diffuse irradiance and prefilter maps in linear space, and IBLBaker to get the Smith BRDF LUT. Also used HDRI-to-CubeMap web utility to make the skybox. Loaded everything in as HDR with stb_image, except the LUT is just a PNG, then tonemapped and gamma corrected at the end. Made sure to parse Albedo and Emissive as sRGB also (hardware applies linear space transformation).
 
 [![OGLRenderer v1.8](https://img.youtube.com/vi/3YBZGUKh1Uo/0.jpg)](https://www.youtube.com/watch?v=3YBZGUKh1Uo)
-
-## Version 2
-- Deferred Rendering
-- Cascading Shadow Maps
-- Bloom/SSAO/Reflections
-- Skeletal Animations
-- Spotlight & Point Light Shadows (Omnidirectional)
-- Transparency
-
-## Version 3
-- Vulkan Rewrite
-- Hardware Accelerated Ray Tracing
-- DLSS
-- Temporal Anti-Aliasing
-- Per-Object Motion Blur
-- Frustrum Culling / Occlusion Culling
-- Volumetrics
-- Caustics
-- Spherical Harmonics
 
 # Build Instructions
 
